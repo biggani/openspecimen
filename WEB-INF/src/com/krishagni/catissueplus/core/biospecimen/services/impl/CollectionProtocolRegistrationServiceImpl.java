@@ -2,12 +2,15 @@
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
+import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
 import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
@@ -36,6 +39,9 @@ import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
+import com.krishagni.catissueplus.core.common.util.AuthUtil;
+import com.krishagni.rbac.domain.RbacConstants;
+import com.krishagni.rbac.service.RbacService;
 
 public class CollectionProtocolRegistrationServiceImpl implements CollectionProtocolRegistrationService {
 	private DaoFactory daoFactory;
@@ -45,6 +51,8 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	private VisitFactory visitFactory;
 	
 	private ParticipantService participantService;
+	
+	private RbacService rbacSvc;
 
 	public void setDaoFactory(DaoFactory daoFactory) {
 		this.daoFactory = daoFactory;
@@ -61,7 +69,11 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	public void setParticipantService(ParticipantService participantService) {
 		this.participantService = participantService;
 	}
-	
+
+	public void setRbacSvc(RbacService rbacSvc) {
+		this.rbacSvc = rbacSvc;
+	}
+
 	@Override
 	@PlusTransactional
 	public ResponseEvent<CollectionProtocolRegistrationDetail> getRegistration(RequestEvent<RegistrationQueryCriteria> req) {				
@@ -74,6 +86,12 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			} else if (crit.getCpId() != null && crit.getPpid() != null) {
 				cpr = getByCpIdAndPpid(crit.getCpId(), crit.getPpid());
 			} 
+			
+			if (cpr == null) {
+				return ResponseEvent.userError(CprErrorCode.NOT_FOUND);
+			}
+			
+			checkPermissions(RbacConstants.CPR, RbacConstants.READ, cpr.getCpId(), cpr.getId());
 			
 			return ResponseEvent.response(cpr);
 		} catch (OpenSpecimenException ose) {
@@ -89,6 +107,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		try {
 			CollectionProtocolRegistrationDetail cprDetail = req.getPayload();
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(cprDetail);
+			checkPermissions(RbacConstants.CPR, RbacConstants.CREATE, cpr.getCollectionProtocol().getId(), null);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			
@@ -126,6 +145,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			}
 			
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(detail);
+			checkPermissions(RbacConstants.CPR, RbacConstants.UPDATE, cpr.getCollectionProtocol().getId(), existing.getId());
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniquePpid(existing, cpr, ose);
@@ -217,6 +237,26 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
+	}
+	
+	private void checkPermissions(String resource, String operation, Long cpId, Long objId) {
+		Long userId = AuthUtil.getCurrentUser().getId();
+		boolean hasPermissions = rbacSvc.checkAccess(userId, resource, operation, cpId, getSites(cpId), objId);
+		
+		if (!hasPermissions) {
+			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
+		}
+	}
+	
+	private Set<Long> getSites(Long cpId) {
+		Set<Long> siteIds = new HashSet<Long>();
+		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getById(cpId);
+		
+		for (Site site : cp.getSites()) {
+			siteIds.add(site.getId());
+		}
+		
+		return siteIds;
 	}
 	
 	private void saveParticipant(CollectionProtocolRegistration existing, CollectionProtocolRegistration cpr) {		

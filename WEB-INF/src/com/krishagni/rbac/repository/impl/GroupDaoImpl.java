@@ -20,11 +20,11 @@ public class GroupDaoImpl extends AbstractDao<Group> implements GroupDao {
 		return (!(sessionFactory.getCurrentSession()
 				.getNamedQuery(CAN_USER_ACCESS)
 				.setLong("groupId" , info.groupId())
-				.setString("resourceName", info.resourceName())
-				.setString("operationName", info.operationName())
+				.setString("resourceName", info.resource())
+				.setString("operationName", info.operation())
 				.setLong("cpId",  info.cpId())
-				.setLong("siteId", info.siteId())
-				.setLong("resourceInstanceId", info.resourceInstanceId())
+				.setLong("siteId", info.sites().iterator().next())
+				.setLong("resourceInstanceId", info.objectId())
 				.list().isEmpty()));
 	}
 

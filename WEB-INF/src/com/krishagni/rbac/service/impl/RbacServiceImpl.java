@@ -452,19 +452,19 @@ public class RbacServiceImpl implements RbacService {
 	
 	@Override
 	@PlusTransactional
-	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Long siteId, Long resourceInstanceId) {
+	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites, Long resourceInstanceId) {
 		try {			
 			UserAccessInformation accessInfo = new UserAccessInformation()
 					.subjectId(subjectId)
-					.resourceName(resource)
-					.operationName(operation)
+					.resource(resource)
+					.operation(operation)
 					.cpId(cpId)
-					.siteId(siteId)
-					.resourceInstanceId(resourceInstanceId);
+					.sites(sites)
+					.objectId(resourceInstanceId);
 			
 			if ((accessInfo.subjectId() == null && accessInfo.groupId() == null) || 
-				StringUtils.isEmpty(accessInfo.resourceName()) ||
-				StringUtils.isEmpty(accessInfo.operationName()) ) {
+				StringUtils.isEmpty(accessInfo.resource()) ||
+				StringUtils.isEmpty(accessInfo.operation()) ) {
 				throw OpenSpecimenException.userError(RbacErrorCode.INSUFFICIENT_USER_DETAILS);
 			}
 			
@@ -477,6 +477,8 @@ public class RbacServiceImpl implements RbacService {
 			}
 			
 			return false;
+		} catch (OpenSpecimenException oce) {
+			throw oce;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

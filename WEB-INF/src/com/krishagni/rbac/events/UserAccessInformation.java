@@ -1,5 +1,8 @@
 package com.krishagni.rbac.events;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class UserAccessInformation {
 	private Long subjectId;
 	
@@ -7,16 +10,14 @@ public class UserAccessInformation {
 	
 	private Long cpId;
 	
-	private Long siteId;
+	private Set<Long> sites = new HashSet<Long>();
 	
-	private String resourceName;
+	private String resource;
 	
-	private String operationName;
+	private String operation;
 	
-	private Long resourceInstanceId;
+	private Long objectId;
 	
-	private Boolean canUserAccess;
-
 	public Long subjectId() {
 		return subjectId;
 	}
@@ -44,48 +45,39 @@ public class UserAccessInformation {
 		return this;
 	}
 	
-	public Long siteId() {
-		return siteId;
+	public Set<Long> sites() {
+		return sites;
 	}
 	
-	public UserAccessInformation siteId(Long siteId) {
-		this.siteId = siteId;
+	public UserAccessInformation sites(Set<Long> sites) {
+		this.sites = sites;
 		return this;
 	}
 
-	public String resourceName() {
-		return resourceName;
+	public String resource() {
+		return resource;
 	}
 
-	public UserAccessInformation resourceName(String resourceName) {
-		this.resourceName = resourceName;
+	public UserAccessInformation resource(String resourceName) {
+		this.resource = resourceName;
 		return this;
 	}
 
-	public String operationName() {
-		return operationName;
+	public String operation() {
+		return operation;
 	}
 
-	public UserAccessInformation operationName(String operationName) {
-		this.operationName = operationName;
+	public UserAccessInformation operation(String operationName) {
+		this.operation = operationName;
 		return this;
 	}
 
-	public Long resourceInstanceId() {
-		return resourceInstanceId;
+	public Long objectId() {
+		return objectId;
 	}
 
-	public UserAccessInformation resourceInstanceId(Long resourceInstanceId) {
-		this.resourceInstanceId = resourceInstanceId;
-		return this;
-	}
-	
-	public Boolean canUserAccess() {
-		return canUserAccess;
-	}
-	
-	public UserAccessInformation canUserAccess(Boolean canUserAccess) {
-		this.canUserAccess = canUserAccess;
+	public UserAccessInformation objectId(Long resourceInstanceId) {
+		this.objectId = resourceInstanceId;
 		return this;
 	}
 }
