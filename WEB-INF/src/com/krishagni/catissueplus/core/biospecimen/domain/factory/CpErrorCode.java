@@ -27,7 +27,9 @@ public enum CpErrorCode implements ErrorCode {
 	
 	INVALID_ALIQUOT_LABEL_FMT,
 	
-	INVALID_DERIVATIVE_LABEL_FMT;
+	INVALID_DERIVATIVE_LABEL_FMT,
+	
+	ACCESS_DENIED;
 
 	@Override
 	public String code() {

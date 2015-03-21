@@ -144,6 +144,7 @@
     <property name="cpeFactory" ref="cpeFactory"/>
     <property name="srFactory" ref="srFactory"/>
     <property name="daoFactory" ref="biospecimenDaoFactory"/>
+    <property name="rbacSvc" ref="rbacSvc"/>
   </bean>
   
   <bean id="participantFactory" class="com.krishagni.catissueplus.core.biospecimen.domain.factory.impl.ParticipantFactoryImpl">

@@ -1,10 +1,8 @@
 package com.krishagni.rbac.service.impl;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
@@ -24,12 +22,14 @@ import com.krishagni.rbac.domain.Group;
 import com.krishagni.rbac.domain.GroupRole;
 import com.krishagni.rbac.domain.Operation;
 import com.krishagni.rbac.domain.Permission;
+import com.krishagni.rbac.domain.RbacConstants;
 import com.krishagni.rbac.domain.Resource;
 import com.krishagni.rbac.domain.ResourceInstanceOp;
 import com.krishagni.rbac.domain.Role;
 import com.krishagni.rbac.domain.RoleAccessControl;
 import com.krishagni.rbac.domain.Subject;
 import com.krishagni.rbac.domain.SubjectRole;
+import com.krishagni.rbac.events.CpSiteInfo;
 import com.krishagni.rbac.events.GroupDetail;
 import com.krishagni.rbac.events.GroupRoleDetail;
 import com.krishagni.rbac.events.OperationDetail;
@@ -452,15 +452,14 @@ public class RbacServiceImpl implements RbacService {
 	
 	@Override
 	@PlusTransactional
-	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites, Long resourceInstanceId) {
+	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
 		try {			
 			UserAccessInformation accessInfo = new UserAccessInformation()
 					.subjectId(subjectId)
 					.resource(resource)
 					.operation(operation)
 					.cpId(cpId)
-					.sites(sites)
-					.objectId(resourceInstanceId);
+					.sites(sites);
 			
 			if ((accessInfo.subjectId() == null && accessInfo.groupId() == null) || 
 				StringUtils.isEmpty(accessInfo.resource()) ||
@@ -483,7 +482,41 @@ public class RbacServiceImpl implements RbacService {
 			throw new RuntimeException(e);
 		}
 	}
-
+	
+	public Set<Long> getAccessibleCps(Long userId) {
+		try {
+			UserAccessInformation accessInfo = new UserAccessInformation()
+					.subjectId(userId)
+					.operation(RbacConstants.READ)
+					.resource(RbacConstants.CP);
+			
+			List<CpSiteInfo> cpSites = daoFactory.getSubjectDao().getAccessibleCpSites(accessInfo);
+			Set<Long> accessibleCps = new HashSet<Long>();
+			Set<Long> sitesToBeFetched = new HashSet<Long>();
+			
+			for (CpSiteInfo info : cpSites) {
+				if (info.getCpId() == null && info.getSiteId() == null) {
+					/*
+					 * has full permissions.
+					 */
+					return new HashSet<Long>();
+				} else if (info.getCpId() != null) {
+					accessibleCps.add(info.getCpId());
+				} else if (info.getCpId() == null && info.getSiteId() != null) {
+					sitesToBeFetched.add(info.getSiteId());
+				}
+			}
+			
+			if (sitesToBeFetched.size() > 0) {
+				accessibleCps.addAll(daoFactory.getSubjectDao().getCpsBySitesIds(sitesToBeFetched));
+			}
+			
+			return accessibleCps.isEmpty() ? null : accessibleCps;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	//
 	// HELPER METHODS
 	// 

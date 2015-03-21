@@ -1,4 +1,4 @@
-
+	
 package com.krishagni.catissueplus.core.biospecimen.repository.impl;
 
 import java.util.ArrayList;
@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -156,7 +157,34 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 		addSearchConditions(query, cpCriteria);
 		addProjections(query, cpCriteria);
 		
+		if (cpCriteria.filter().size() > 0) {
+			applyCpfilter(cpCriteria.filter(), query);
+		}
+		
 		return query.addOrder(Order.asc("title")).list();
+	}
+	
+	private void applyCpfilter(Set<Long> ids, Criteria criteria) {
+		/*
+		 * All of this because oracle doesn't allow `in` parameter size to be more than 1000
+		 * so the parameter item list needs to be chunked out.
+		 */
+		List<Long> list = new ArrayList<Long>(ids);
+		String propertyName = "id";
+		
+		Junction or = Restrictions.disjunction();
+		if (list.size() > 1000) {
+			while (list.size() > 1000) {
+				List<?> subList = list.subList(0, 1000);
+				or.add(Restrictions.in(propertyName, subList));
+				list.subList(0, 1000).clear();
+			}
+		}
+		
+		if (list.size() > 0) {
+			or.add(Restrictions.in(propertyName, list));
+		}
+		criteria.add(or);
 	}
 
 	private void addSearchConditions(Criteria query, CpListCriteria cpCriteria) {

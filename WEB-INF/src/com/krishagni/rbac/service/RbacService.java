@@ -71,5 +71,7 @@ public interface RbacService {
 	//
 	// Intern API's can change without notice.
 	//
-	public boolean checkAccess(Long userId, String resource, String operation, Long cpId, Set<Long> sites, Long resourceInstanceId);
+	public boolean checkAccess(Long userId, String resource, String operation, Long cpId, Set<Long> sites);
+	
+	public Set<Long> getAccessibleCps(Long userId);
 }

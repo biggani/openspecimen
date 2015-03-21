@@ -914,11 +914,11 @@
       </column>
 
       <column name="RESOURCE_ID" type="${int.type}">
-        <constraints unique="true" nullable="false" />
+        <constraints nullable="false" />
       </column>
 
       <column name="OPERATION_ID" type="${int.type}">
-        <constraints unique="true" nullable="false" />
+        <constraints nullable="false" />
       </column>
      
     </createTable>
@@ -1094,5 +1094,23 @@
       baseColumnNames="CP_ID"
       referencedTableName="CATISSUE_COLLECTION_PROTOCOL"
       referencedColumnNames="IDENTIFIER" />
+  </changeSet>
+
+  <changeSet author="mibrahim" id="Rbac subject access view" runOnChange="true">
+    <sql>
+      CREATE OR REPLACE VIEW RBAC_SUBJECT_ACCESS_VIEW AS (
+        SELECT 
+          SUB.SUBJECT_ID AS SUBJECT_ID, 
+          SUB.CP_ID AS CP_ID, 
+          SUB.SITE_ID AS SITE_ID, 
+          RES.NAME AS RESOURCE, 
+          OPS.NAME AS OPERATION
+        FROM 
+          RBAC_SUBJECT_ROLES SUB JOIN RBAC_ROLE_ACCESS_LIST ACL ON ACL.ROLE_ID = SUB.ROLE_ID 
+          JOIN RBAC_ROLE_ACCESS_LIST_OPS ACLO ON ACLO.ACL_ID = ACL.IDENTIFIER
+          JOIN RBAC_RESOURCES RES ON RES.IDENTIFIER = ACL.RESOURCE_ID
+          JOIN RBAC_OPERATIONS OPS ON OPS.IDENTIFIER = ACLO.OPERATION_ID
+      )
+     </sql>   
   </changeSet>
 </databaseChangeLog>

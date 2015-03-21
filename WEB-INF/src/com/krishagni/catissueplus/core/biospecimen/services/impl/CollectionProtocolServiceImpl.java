@@ -1,13 +1,15 @@
-
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.biospecimen.domain.AliquotSpecimensRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
@@ -41,6 +43,9 @@ import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
+import com.krishagni.catissueplus.core.common.util.AuthUtil;
+import com.krishagni.rbac.domain.RbacConstants;
+import com.krishagni.rbac.service.RbacService;
 
 import edu.wustl.common.beans.SessionDataBean;
 
@@ -53,6 +58,8 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	private SpecimenRequirementFactory srFactory;
 
 	private DaoFactory daoFactory;
+	
+	private RbacService rbacSvc;
 
 	public CollectionProtocolFactory getCpFactory() {
 		return cpFactory;
@@ -68,6 +75,10 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 
 	public void setCpeFactory(CpeFactory cpeFactory) {
 		this.cpeFactory = cpeFactory;
+	}
+	
+	public void setRbacSvc(RbacService rbacSvc) {
+		this.rbacSvc = rbacSvc;
 	}
 	
 	public SpecimenRequirementFactory getSrFactory() {
@@ -90,6 +101,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	@PlusTransactional
 	public ResponseEvent<List<CollectionProtocolSummary>> getProtocols(RequestEvent<CpListCriteria> req) {
 		CpListCriteria crit = req.getPayload();
+		crit.filter(getAccessibleCps());
 		List<CollectionProtocolSummary> cpList = daoFactory.getCollectionProtocolDao()
 				.getCollectionProtocols(crit);
 		
@@ -105,22 +117,29 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	@Override
 	@PlusTransactional
 	public ResponseEvent<CollectionProtocolDetail> getCollectionProtocol(RequestEvent<CpQueryCriteria> req) {
-		CpQueryCriteria crit = req.getPayload();
-		CollectionProtocol cp = null;
-		
-		if (crit.getId() != null) {
-			cp = daoFactory.getCollectionProtocolDao().getById(crit.getId()); 
-		} else if (crit.getTitle() != null) {
-			cp = daoFactory.getCollectionProtocolDao().getCollectionProtocol(crit.getTitle());
-		} else if (crit.getShortTitle() != null) {
-			cp = daoFactory.getCollectionProtocolDao().getCpByShortTitle(crit.getShortTitle());
+		try {
+			CpQueryCriteria crit = req.getPayload();
+			CollectionProtocol cp = null;
+			
+			if (crit.getId() != null) {
+				cp = daoFactory.getCollectionProtocolDao().getById(crit.getId()); 
+			} else if (crit.getTitle() != null) {
+				cp = daoFactory.getCollectionProtocolDao().getCollectionProtocol(crit.getTitle());
+			} else if (crit.getShortTitle() != null) {
+				cp = daoFactory.getCollectionProtocolDao().getCpByShortTitle(crit.getShortTitle());
+			}
+			
+			if (cp == null) {
+				return ResponseEvent.userError(CpErrorCode.NOT_FOUND);
+			}
+			
+			checkAccess(RbacConstants.CP, RbacConstants.READ, cp);
+			return ResponseEvent.response(CollectionProtocolDetail.from(cp, crit.isFullObject()));
+		} catch (OpenSpecimenException oce) {
+			return ResponseEvent.error(oce);
+		} catch (Exception e) {
+			return ResponseEvent.serverError(e);
 		}
-		
-		if (cp == null) {
-			return ResponseEvent.userError(CpErrorCode.NOT_FOUND);
-		}
-		
-		return ResponseEvent.response(CollectionProtocolDetail.from(cp, crit.isFullObject()));
 	}
 	
 	@Override
@@ -138,6 +157,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	@PlusTransactional
 	public ResponseEvent<CollectionProtocolDetail> createCollectionProtocol(RequestEvent<CollectionProtocolDetail> req) {
 		try {
+			ensureAdminAccess();
 			CollectionProtocol cp = cpFactory.createCollectionProtocol(req.getPayload());
 
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
@@ -439,6 +459,43 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
+	}
+	
+	private void ensureAdminAccess() {
+		if(!AuthUtil.getCurrentUser().isAdmin()) {
+			throw OpenSpecimenException.userError(CpErrorCode.ACCESS_DENIED);
+		}
+	}
+	
+	private Set<Long> getAccessibleCps() {
+		Long userId = AuthUtil.getCurrentUser().getId();
+		Set<Long> cpIds = rbacSvc.getAccessibleCps(userId);
+		
+		if (cpIds == null) {
+			throw OpenSpecimenException.userError(CpErrorCode.ACCESS_DENIED);
+		}
+		
+		return cpIds;
+	}
+	
+	private void checkAccess(String resource, String operation, CollectionProtocol cp) {
+		Long userId = AuthUtil.getCurrentUser().getId();
+		Set<Long> sites = getSites(cp);
+		
+		boolean hasPermissions = rbacSvc.checkAccess(userId, resource, operation, cp.getId(), sites);
+		if (!hasPermissions) {
+			throw OpenSpecimenException.userError(CpErrorCode.ACCESS_DENIED);
+		}
+	}
+	
+	private Set<Long> getSites(CollectionProtocol cp) {
+		Set<Long> ids = new HashSet<Long>();
+		
+		for(Site site : cp.getSites()) {
+			ids.add(site.getId());
+		}
+		
+		return ids;
 	}
 	
 	private void ensureUniqueTitle(String title, OpenSpecimenException ose) {

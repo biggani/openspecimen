@@ -4,16 +4,17 @@ package com.krishagni.catissueplus.core.biospecimen.services.impl;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.krishagni.catissueplus.core.administrative.domain.Site;
-import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
+import com.krishagni.catissueplus.core.administrative.domain.User;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
 import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
+import com.krishagni.catissueplus.core.biospecimen.domain.ParticipantMedicalIdentifier;
 import com.krishagni.catissueplus.core.biospecimen.domain.Specimen;
 import com.krishagni.catissueplus.core.biospecimen.domain.SpecimenRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.Visit;
@@ -91,8 +92,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 				return ResponseEvent.userError(CprErrorCode.NOT_FOUND);
 			}
 			
-			checkPermissions(RbacConstants.CPR, RbacConstants.READ, cpr.getCpId(), cpr.getId());
-			
 			return ResponseEvent.response(cpr);
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -107,7 +106,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		try {
 			CollectionProtocolRegistrationDetail cprDetail = req.getPayload();
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(cprDetail);
-			checkPermissions(RbacConstants.CPR, RbacConstants.CREATE, cpr.getCollectionProtocol().getId(), null);
+			checkAccess(RbacConstants.CPR, RbacConstants.CREATE, cpr);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			
@@ -145,7 +144,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			}
 			
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(detail);
-			checkPermissions(RbacConstants.CPR, RbacConstants.UPDATE, cpr.getCollectionProtocol().getId(), existing.getId());
+			checkAccess(RbacConstants.CPR, RbacConstants.UPDATE, cpr);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniquePpid(existing, cpr, ose);
@@ -239,23 +238,33 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		}
 	}
 	
-	private void checkPermissions(String resource, String operation, Long cpId, Long objId) {
-		Long userId = AuthUtil.getCurrentUser().getId();
-		boolean hasPermissions = rbacSvc.checkAccess(userId, resource, operation, cpId, getSites(cpId), objId);
+	private void checkAccess(String resource, String operation, CollectionProtocolRegistration cpr) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
+			return;
+		}
 		
+		Long cpId = cpr.getCollectionProtocol().getId();
+		Set<Long> siteIds = getSites(cpr.getParticipant());
+		boolean hasPermissions = rbacSvc.checkAccess(user.getId(), resource, operation, cpId, siteIds);
 		if (!hasPermissions) {
 			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
 		}
 	}
 	
-	private Set<Long> getSites(Long cpId) {
+	private Set<Long> getSites(Participant participant) {
 		Set<Long> siteIds = new HashSet<Long>();
-		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getById(cpId);
 		
-		for (Site site : cp.getSites()) {
-			siteIds.add(site.getId());
+		if (participant != null) {
+			Map<String, ParticipantMedicalIdentifier> pmis = participant.getPmiCollection();
+			
+			for (Map.Entry<String, ParticipantMedicalIdentifier> entry : pmis.entrySet()) {
+				ParticipantMedicalIdentifier pmi = entry.getValue();
+				if (pmi != null) {
+					siteIds.add(pmi.getSite().getId());
+				}
+			}
 		}
-		
 		return siteIds;
 	}
 	
@@ -352,6 +361,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
+		checkAccess(RbacConstants.CPR, RbacConstants.READ, cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
@@ -361,6 +371,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.INVALID_CP_AND_PPID);
 		}
 		
+		checkAccess(RbacConstants.CPR, RbacConstants.READ, cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
