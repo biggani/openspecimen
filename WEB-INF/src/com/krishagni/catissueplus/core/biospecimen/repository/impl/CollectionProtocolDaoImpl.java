@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -94,6 +95,22 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 				.list();
 	}
 	
+	@SuppressWarnings("unchecked")
+	@Override
+	public Set<Long> getCpIdsBySiteIds(Set<Long> siteIds) {
+		List<Object> rows = sessionFactory.getCurrentSession()
+				.getNamedQuery(GET_CPIDS_BY_SITEIDS)
+				.setParameterList("siteIds", siteIds)
+				.list();
+		
+		Set<Long> result = new HashSet<Long>();
+		for (Object row : rows) {
+			result.add((Long)row);
+		}
+		
+		return result;
+	}
+	
 	@Override
 	public CollectionProtocolEvent getCpe(Long cpeId) {
 		return (CollectionProtocolEvent) sessionFactory.getCurrentSession()
@@ -157,36 +174,9 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 		addSearchConditions(query, cpCriteria);
 		addProjections(query, cpCriteria);
 		
-		if (cpCriteria.filter().size() > 0) {
-			applyCpfilter(cpCriteria.filter(), query);
-		}
-		
 		return query.addOrder(Order.asc("title")).list();
 	}
 	
-	private void applyCpfilter(Set<Long> ids, Criteria criteria) {
-		/*
-		 * All of this because oracle doesn't allow `in` parameter size to be more than 1000
-		 * so the parameter item list needs to be chunked out.
-		 */
-		List<Long> list = new ArrayList<Long>(ids);
-		String propertyName = "id";
-		
-		Junction or = Restrictions.disjunction();
-		if (list.size() > 1000) {
-			while (list.size() > 1000) {
-				List<?> subList = list.subList(0, 1000);
-				or.add(Restrictions.in(propertyName, subList));
-				list.subList(0, 1000).clear();
-			}
-		}
-		
-		if (list.size() > 0) {
-			or.add(Restrictions.in(propertyName, list));
-		}
-		criteria.add(or);
-	}
-
 	private void addSearchConditions(Criteria query, CpListCriteria cpCriteria) {
 		String searchString = cpCriteria.query();
 		if (StringUtils.isBlank(searchString)) {
@@ -209,6 +199,33 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 		if (piId != null) {
 			query.add(Restrictions.eq("pi.id", piId));
 		}
+		
+		if (cpCriteria.ids().size() > 0) {
+			applyCpfilter(query, cpCriteria.ids());
+		}
+	}
+	
+	private void applyCpfilter(Criteria criteria, Set<Long> ids) {
+		/*
+		 * All of this because oracle doesn't allow `in` parameter size to be more than 1000
+		 * so the parameter item list needs to be chunked out.
+		 */
+		List<Long> list = new ArrayList<Long>(ids);
+		String propertyName = "id";
+		
+		Junction or = Restrictions.disjunction();
+		if (list.size() > 1000) {
+			while (list.size() > 1000) {
+				List<?> subList = list.subList(0, 1000);
+				or.add(Restrictions.in(propertyName, subList));
+				list.subList(0, 1000).clear();
+			}
+		}
+		
+		if (list.size() > 0) {
+			or.add(Restrictions.in(propertyName, list));
+		}
+		criteria.add(or);
 	}
 	
 	private void addProjections(Criteria query, CpListCriteria cpCriteria) {
@@ -258,4 +275,6 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 	private static final String GET_CP_BY_TITLE = FQN + ".getCpByTitle";
 	
 	private static final String GET_CPS_BY_SHORT_TITLE = FQN + ".getCpsByShortTitle";
+	
+	private static final String GET_CPIDS_BY_SITEIDS = FQN + ".getCpIdsBySiteIds";
 }

@@ -3,7 +3,7 @@ package com.krishagni.rbac.events;
 import java.util.HashSet;
 import java.util.Set;
 
-public class UserAccessInformation {
+public class UserAccessCriteria {
 	private Long subjectId;
 	
 	private Long groupId;
@@ -22,7 +22,7 @@ public class UserAccessInformation {
 		return subjectId;
 	}
 
-	public UserAccessInformation subjectId(Long subjectId) {
+	public UserAccessCriteria subjectId(Long subjectId) {
 		this.subjectId = subjectId;
 		return this;
 	}
@@ -31,7 +31,7 @@ public class UserAccessInformation {
 		return groupId;
 	}
 
-	public UserAccessInformation groupId(Long groupId) {
+	public UserAccessCriteria groupId(Long groupId) {
 		this.groupId = groupId;
 		return this;
 	}
@@ -40,7 +40,7 @@ public class UserAccessInformation {
 		return cpId;
 	}
 	
-	public UserAccessInformation cpId(Long cpId) {
+	public UserAccessCriteria cpId(Long cpId) {
 		this.cpId = cpId;
 		return this;
 	}
@@ -49,7 +49,7 @@ public class UserAccessInformation {
 		return sites;
 	}
 	
-	public UserAccessInformation sites(Set<Long> sites) {
+	public UserAccessCriteria sites(Set<Long> sites) {
 		this.sites = sites;
 		return this;
 	}
@@ -58,7 +58,7 @@ public class UserAccessInformation {
 		return resource;
 	}
 
-	public UserAccessInformation resource(String resourceName) {
+	public UserAccessCriteria resource(String resourceName) {
 		this.resource = resourceName;
 		return this;
 	}
@@ -67,7 +67,7 @@ public class UserAccessInformation {
 		return operation;
 	}
 
-	public UserAccessInformation operation(String operationName) {
+	public UserAccessCriteria operation(String operationName) {
 		this.operation = operationName;
 		return this;
 	}
@@ -76,7 +76,7 @@ public class UserAccessInformation {
 		return objectId;
 	}
 
-	public UserAccessInformation objectId(Long resourceInstanceId) {
+	public UserAccessCriteria objectId(Long resourceInstanceId) {
 		this.objectId = resourceInstanceId;
 		return this;
 	}

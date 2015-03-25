@@ -22,7 +22,6 @@ import com.krishagni.rbac.domain.Group;
 import com.krishagni.rbac.domain.GroupRole;
 import com.krishagni.rbac.domain.Operation;
 import com.krishagni.rbac.domain.Permission;
-import com.krishagni.rbac.domain.RbacConstants;
 import com.krishagni.rbac.domain.Resource;
 import com.krishagni.rbac.domain.ResourceInstanceOp;
 import com.krishagni.rbac.domain.Role;
@@ -40,7 +39,7 @@ import com.krishagni.rbac.events.RoleAccessControlDetails;
 import com.krishagni.rbac.events.RoleDetail;
 import com.krishagni.rbac.events.SubjectDetail;
 import com.krishagni.rbac.events.SubjectRoleDetail;
-import com.krishagni.rbac.events.UserAccessInformation;
+import com.krishagni.rbac.events.UserAccessCriteria;
 import com.krishagni.rbac.repository.DaoFactory;
 import com.krishagni.rbac.repository.OperationListCriteria;
 import com.krishagni.rbac.repository.PermissionListCriteria;
@@ -454,28 +453,20 @@ public class RbacServiceImpl implements RbacService {
 	@PlusTransactional
 	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
 		try {			
-			UserAccessInformation accessInfo = new UserAccessInformation()
+			UserAccessCriteria criteria = new UserAccessCriteria()
 					.subjectId(subjectId)
 					.resource(resource)
 					.operation(operation)
 					.cpId(cpId)
 					.sites(sites);
 			
-			if ((accessInfo.subjectId() == null && accessInfo.groupId() == null) || 
-				StringUtils.isEmpty(accessInfo.resource()) ||
-				StringUtils.isEmpty(accessInfo.operation()) ) {
+			if ((criteria.subjectId() == null) || 
+				StringUtils.isEmpty(criteria.resource()) ||
+				StringUtils.isEmpty(criteria.operation()) ) {
 				throw OpenSpecimenException.userError(RbacErrorCode.INSUFFICIENT_USER_DETAILS);
 			}
 			
-			if (daoFactory.getSubjectDao().canUserAccess(accessInfo)) {
-				return true;
-			}
-			
-			if (accessInfo.groupId() != null && daoFactory.getGroupDao().canUserAccess(accessInfo)) {
-				return true;
-			}
-			
-			return false;
+			return daoFactory.getSubjectDao().canUserAccess(criteria);
 		} catch (OpenSpecimenException oce) {
 			throw oce;
 		} catch (Exception e) {
@@ -483,38 +474,15 @@ public class RbacServiceImpl implements RbacService {
 		}
 	}
 	
-	public Set<Long> getAccessibleCps(Long userId) {
-		try {
-			UserAccessInformation accessInfo = new UserAccessInformation()
-					.subjectId(userId)
-					.operation(RbacConstants.READ)
-					.resource(RbacConstants.CP);
-			
-			List<CpSiteInfo> cpSites = daoFactory.getSubjectDao().getAccessibleCpSites(accessInfo);
-			Set<Long> accessibleCps = new HashSet<Long>();
-			Set<Long> sitesToBeFetched = new HashSet<Long>();
-			
-			for (CpSiteInfo info : cpSites) {
-				if (info.getCpId() == null && info.getSiteId() == null) {
-					/*
-					 * has full permissions.
-					 */
-					return new HashSet<Long>();
-				} else if (info.getCpId() != null) {
-					accessibleCps.add(info.getCpId());
-				} else if (info.getCpId() == null && info.getSiteId() != null) {
-					sitesToBeFetched.add(info.getSiteId());
-				}
-			}
-			
-			if (sitesToBeFetched.size() > 0) {
-				accessibleCps.addAll(daoFactory.getSubjectDao().getCpsBySitesIds(sitesToBeFetched));
-			}
-			
-			return accessibleCps.isEmpty() ? null : accessibleCps;
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+	@Override
+	@PlusTransactional
+	public List<CpSiteInfo> getAccessibleCpSites(Long userId, String resource, String operation) {
+		UserAccessCriteria accessInfo = new UserAccessCriteria()
+				.subjectId(userId)
+				.operation(operation)
+				.resource(resource);
+		
+		return daoFactory.getSubjectDao().getAccessibleCpSites(accessInfo);
 	}
 	
 	//

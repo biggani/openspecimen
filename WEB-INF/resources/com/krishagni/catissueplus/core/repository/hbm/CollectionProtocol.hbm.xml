@@ -125,5 +125,15 @@
         shortTitle in (:shortTitles) and 
         activityStatus = 'Active'
     </query>
+    
+    <sql-query name="getCpIdsBySiteIds">
+      <return-scalar column="CP_ID" type="long"/>
+      select
+        COLLECTION_PROTOCOL_ID AS CP_ID
+      from
+        CATISSUE_SITE_CP
+      where
+        SITE_ID in (:siteIds)
+    </sql-query>
   </class>
 </hibernate-mapping>

@@ -1,15 +1,12 @@
 package com.krishagni.rbac.repository.impl;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.krishagni.catissueplus.core.common.repository.AbstractDao;
 import com.krishagni.rbac.domain.Subject;
 import com.krishagni.rbac.events.CpSiteInfo;
-import com.krishagni.rbac.events.UserAccessInformation;
+import com.krishagni.rbac.events.UserAccessCriteria;
 import com.krishagni.rbac.repository.SubjectDao;
 
 
@@ -23,7 +20,7 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<CpSiteInfo> getAccessibleCpSites(UserAccessInformation accessInfo) {
+	public List<CpSiteInfo> getAccessibleCpSites(UserAccessCriteria accessInfo) {
 		List<Object[]> rows = sessionFactory.getCurrentSession()
 				.getNamedQuery(GET_CP_SITE_ACCESS_INFO)
 				.setString("resource", accessInfo.resource())
@@ -34,32 +31,20 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 		return getCpSites(rows);
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
-	public Set<Long> getCpsBySitesIds(Set<Long> siteIds) {
-		List<Object> rows = sessionFactory.getCurrentSession()
-				.getNamedQuery(GET_CPIDS_BY_SITEIDS)
-				.setParameterList("siteIds", siteIds)
-				.list();
-		
-		Set<Long> result = new HashSet<Long>();
-		for (Object row : rows) {
-			result.add((Long)row);
+	@SuppressWarnings("unchecked")
+	public boolean canUserAccess(UserAccessCriteria info) {
+		if (info.sites().isEmpty()) {
+			info.sites().add(-1L);
 		}
 		
-		return result;
-	}
-	
-	@Override
-	@SuppressWarnings("unchecked")
-	public boolean canUserAccess(UserAccessInformation info) {
 		List<Object[]> result = sessionFactory.getCurrentSession()
 				.getNamedQuery(CAN_USER_ACCESS)
 				.setString("resource", info.resource())
 				.setString("operation", info.operation())
 				.setLong("subjectId", info.subjectId())
 				.setLong("cpId", info.cpId())
-				.setParameterList("siteIds", info.sites().isEmpty() ? Collections.singleton(-1L) : info.sites())
+				.setParameterList("siteIds", info.sites())
 				.list();
 		
 		return !result.isEmpty();
@@ -82,8 +67,6 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 
 	private static final String GET_CP_SITE_ACCESS_INFO = FQN + ".getCpSiteAccessInfo";
 
-	private static final String GET_CPIDS_BY_SITEIDS = FQN + ".getCpIdsBySiteIds";
-	
 	private static final String CAN_USER_ACCESS = FQN + ".canUserAccess";
-
+	
 }

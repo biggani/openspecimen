@@ -1098,18 +1098,19 @@
 
   <changeSet author="mibrahim" id="Rbac subject access view" runOnChange="true">
     <sql>
-      CREATE OR REPLACE VIEW RBAC_SUBJECT_ACCESS_VIEW AS (
-        SELECT 
-          SUB.SUBJECT_ID AS SUBJECT_ID, 
-          SUB.CP_ID AS CP_ID, 
-          SUB.SITE_ID AS SITE_ID, 
-          RES.NAME AS RESOURCE, 
-          OPS.NAME AS OPERATION
-        FROM 
-          RBAC_SUBJECT_ROLES SUB JOIN RBAC_ROLE_ACCESS_LIST ACL ON ACL.ROLE_ID = SUB.ROLE_ID 
-          JOIN RBAC_ROLE_ACCESS_LIST_OPS ACLO ON ACLO.ACL_ID = ACL.IDENTIFIER
-          JOIN RBAC_RESOURCES RES ON RES.IDENTIFIER = ACL.RESOURCE_ID
-          JOIN RBAC_OPERATIONS OPS ON OPS.IDENTIFIER = ACLO.OPERATION_ID
+      create or replace view RBAC_SUBJECT_ACCESS_VIEW as (
+        select 
+          sub.subject_id as subject_id, 
+          sub.cp_id as cp_id, 
+          sub.site_id as site_id, 
+          res.name as resource, 
+          ops.name as operation
+        from 
+          rbac_subject_roles sub 
+          inner join rbac_role_access_list acl on acl.role_id = sub.role_id 
+          inner join rbac_role_access_list_ops aclo on aclo.acl_id = acl.identifier
+          inner join rbac_resources res on res.identifier = acl.resource_id
+          inner join rbac_operations ops on ops.identifier = aclo.operation_id
       )
      </sql>   
   </changeSet>

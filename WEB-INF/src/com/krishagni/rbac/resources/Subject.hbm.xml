@@ -32,8 +32,8 @@
         SUBJECT_ID = :subjectId and
         RESOURCE = :resource and
         OPERATION = :operation and
-        (CP_ID = :cpId || CP_ID is null) and
-        (SITE_ID in (:siteIds) || SITE_ID is null)
+        (CP_ID = :cpId or CP_ID is null) and
+        (SITE_ID in (:siteIds) or SITE_ID is null)
     </sql-query>
     
     <sql-query name="getCpSiteAccessInfo">
@@ -48,17 +48,6 @@
         RESOURCE = :resource 
         and OPERATION = :operation
         and SUBJECT_ID = :userId
-    </sql-query>
-    
-    <sql-query name="getCpIdsBySiteIds">
-      <return-scalar column="CP_ID" type="long"/>
-      
-      select
-        COLLECTION_PROTOCOL_ID AS CP_ID
-      from
-        CATISSUE_SITE_CP
-      where
-        SITE_ID in (:siteIds)
     </sql-query>
   </class>  
 </hibernate-mapping>

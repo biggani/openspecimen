@@ -144,7 +144,6 @@
     <property name="cpeFactory" ref="cpeFactory"/>
     <property name="srFactory" ref="srFactory"/>
     <property name="daoFactory" ref="biospecimenDaoFactory"/>
-    <property name="rbacSvc" ref="rbacSvc"/>
   </bean>
   
   <bean id="participantFactory" class="com.krishagni.catissueplus.core.biospecimen.domain.factory.impl.ParticipantFactoryImpl">
@@ -177,7 +176,6 @@
     <property name="cprFactory" ref="cprFactory"/>
     <property name="visitFactory" ref="visitFactory"/>
     <property name="participantService" ref="participantSvc"/>
-    <property name="rbacSvc" ref="rbacSvc"/>
   </bean>
 
   <bean id="userFact" class="com.krishagni.catissueplus.core.administrative.domain.factory.impl.UserFactoryImpl">

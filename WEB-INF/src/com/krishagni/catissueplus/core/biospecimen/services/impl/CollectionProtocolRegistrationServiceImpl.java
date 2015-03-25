@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.krishagni.catissueplus.core.administrative.domain.User;
+import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
 import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
@@ -35,14 +35,13 @@ import com.krishagni.catissueplus.core.biospecimen.repository.DaoFactory;
 import com.krishagni.catissueplus.core.biospecimen.repository.VisitsListCriteria;
 import com.krishagni.catissueplus.core.biospecimen.services.CollectionProtocolRegistrationService;
 import com.krishagni.catissueplus.core.biospecimen.services.ParticipantService;
+import com.krishagni.catissueplus.core.common.AccessCtrlManager;
 import com.krishagni.catissueplus.core.common.PlusTransactional;
 import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
+import com.krishagni.catissueplus.core.common.events.OpenSpecimenResource;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
-import com.krishagni.catissueplus.core.common.util.AuthUtil;
-import com.krishagni.rbac.domain.RbacConstants;
-import com.krishagni.rbac.service.RbacService;
 
 public class CollectionProtocolRegistrationServiceImpl implements CollectionProtocolRegistrationService {
 	private DaoFactory daoFactory;
@@ -53,8 +52,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	
 	private ParticipantService participantService;
 	
-	private RbacService rbacSvc;
-
 	public void setDaoFactory(DaoFactory daoFactory) {
 		this.daoFactory = daoFactory;
 	}
@@ -69,10 +66,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 
 	public void setParticipantService(ParticipantService participantService) {
 		this.participantService = participantService;
-	}
-
-	public void setRbacSvc(RbacService rbacSvc) {
-		this.rbacSvc = rbacSvc;
 	}
 
 	@Override
@@ -106,7 +99,10 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		try {
 			CollectionProtocolRegistrationDetail cprDetail = req.getPayload();
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(cprDetail);
-			checkAccess(RbacConstants.CPR, RbacConstants.CREATE, cpr);
+			
+			if (!AccessCtrlManager.getInstance().hasCreatePermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
+				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
+			}
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			
@@ -144,7 +140,9 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			}
 			
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(detail);
-			checkAccess(RbacConstants.CPR, RbacConstants.UPDATE, cpr);
+			if (!AccessCtrlManager.getInstance().hasUpdatePermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
+				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
+			}
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniquePpid(existing, cpr, ose);
@@ -169,6 +167,8 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	public ResponseEvent<List<VisitSummary>> getVisits(RequestEvent<VisitsListCriteria> req) {
 		try {
 			return ResponseEvent.response(daoFactory.getVisitsDao().getVisits(req.getPayload()));
+		} catch (OpenSpecimenException ose) {
+			return ResponseEvent.error(ose);
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
@@ -202,6 +202,10 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			Visit visit = visitFactory.createVisit(req.getPayload()); 
 			visit.setName(UUID.randomUUID().toString()); 
 
+			if (!AccessCtrlManager.getInstance().hasCreatePermissions(OpenSpecimenResource.VISIT, visit.getCollectionProtocol(), 
+					getSites(visit.getRegistration()))) {
+				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
+			}
 			daoFactory.getVisitsDao().saveOrUpdate(visit); 
 			return ResponseEvent.response(VisitDetail.from(visit));			
 		} catch (OpenSpecimenException ose) {
@@ -211,7 +215,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		}
 	}
 		
-	
 	@Override
 	@PlusTransactional
 	public ResponseEvent<ParticipantRegistrationsList> createBulkRegistration(RequestEvent<ParticipantRegistrationsList> req) {
@@ -238,22 +241,9 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		}
 	}
 	
-	private void checkAccess(String resource, String operation, CollectionProtocolRegistration cpr) {
-		User user = AuthUtil.getCurrentUser();
-		if (user.isAdmin()) {
-			return;
-		}
-		
-		Long cpId = cpr.getCollectionProtocol().getId();
-		Set<Long> siteIds = getSites(cpr.getParticipant());
-		boolean hasPermissions = rbacSvc.checkAccess(user.getId(), resource, operation, cpId, siteIds);
-		if (!hasPermissions) {
-			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
-		}
-	}
-	
-	private Set<Long> getSites(Participant participant) {
-		Set<Long> siteIds = new HashSet<Long>();
+	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
+		Participant participant = cpr.getParticipant();
+		Set<Site> sites = new HashSet<Site>();
 		
 		if (participant != null) {
 			Map<String, ParticipantMedicalIdentifier> pmis = participant.getPmiCollection();
@@ -261,11 +251,12 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			for (Map.Entry<String, ParticipantMedicalIdentifier> entry : pmis.entrySet()) {
 				ParticipantMedicalIdentifier pmi = entry.getValue();
 				if (pmi != null) {
-					siteIds.add(pmi.getSite().getId());
+					sites.add(pmi.getSite());
 				}
 			}
 		}
-		return siteIds;
+		
+		return sites;
 	}
 	
 	private void saveParticipant(CollectionProtocolRegistration existing, CollectionProtocolRegistration cpr) {		
@@ -361,7 +352,10 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
-		checkAccess(RbacConstants.CPR, RbacConstants.READ, cpr);
+		if (!AccessCtrlManager.getInstance().hasReadPermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
+			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
+		}
+		
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
@@ -371,7 +365,10 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.INVALID_CP_AND_PPID);
 		}
 		
-		checkAccess(RbacConstants.CPR, RbacConstants.READ, cpr);
+		if (!AccessCtrlManager.getInstance().hasReadPermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
+			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
+		}
+		
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	

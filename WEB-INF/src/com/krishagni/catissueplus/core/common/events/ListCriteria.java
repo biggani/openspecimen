@@ -27,7 +27,7 @@ public interface ListCriteria<T extends ListCriteria<T>> {
 	
 	public T includeStat(boolean includeStat);
 	
-	public Set<Long> filter();
+	public Set<Long> ids();
 	
-	public T filter(Set<Long> ids);
+	public T ids(Set<Long> ids);
 }

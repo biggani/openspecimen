@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
+import com.krishagni.rbac.events.CpSiteInfo;
 import com.krishagni.rbac.events.GroupDetail;
 import com.krishagni.rbac.events.GroupRoleDetail;
 import com.krishagni.rbac.events.OperationDetail;
@@ -73,5 +74,5 @@ public interface RbacService {
 	//
 	public boolean checkAccess(Long userId, String resource, String operation, Long cpId, Set<Long> sites);
 	
-	public Set<Long> getAccessibleCps(Long userId);
+	public List<CpSiteInfo> getAccessibleCpSites(Long userId, String resource, String operation);
 }

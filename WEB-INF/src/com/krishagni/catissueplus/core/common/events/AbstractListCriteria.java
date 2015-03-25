@@ -17,7 +17,7 @@ public abstract class AbstractListCriteria<T extends ListCriteria<T>> implements
 	
 	private boolean includeStat;
 	
-	private Set<Long> filter = new HashSet<Long>();
+	private Set<Long> ids = new HashSet<Long>();
 	
 	@Override
 	public int startAt() {
@@ -86,13 +86,13 @@ public abstract class AbstractListCriteria<T extends ListCriteria<T>> implements
 	}
 		
 	@Override
-	public Set<Long> filter() {
-		return filter;
+	public Set<Long> ids() {
+		return ids;
 	}
 	
 	@Override
-	public T filter(Set<Long> filter) {
-		this.filter = filter;
+	public T ids(Set<Long> ids) {
+		this.ids = ids;
 		return self();
 	}
 	
