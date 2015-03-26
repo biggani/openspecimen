@@ -32,14 +32,27 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 	}
 	
 	@Override
-	@SuppressWarnings("unchecked")
 	public boolean canUserAccess(UserAccessCriteria info) {
-		if (info.sites().isEmpty()) {
-			info.sites().add(-1L);
-		}
-		
+		return info.sites().isEmpty() ? canUserAccessOnCp(info) : canUserAccessOnCpAndSite(info); 
+	}
+	
+	@SuppressWarnings("unchecked")
+	private boolean canUserAccessOnCp(UserAccessCriteria info) {
 		List<Object[]> result = sessionFactory.getCurrentSession()
 				.getNamedQuery(CAN_USER_ACCESS)
+				.setString("resource", info.resource())
+				.setString("operation", info.operation())
+				.setLong("subjectId", info.subjectId())
+				.setLong("cpId", info.cpId())
+				.list();
+		
+		return !result.isEmpty();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private boolean canUserAccessOnCpAndSite(UserAccessCriteria info) {
+		List<Object[]> result = sessionFactory.getCurrentSession()
+				.getNamedQuery(CAN_USER_ACCESS_ON_SITE)
 				.setString("resource", info.resource())
 				.setString("operation", info.operation())
 				.setLong("subjectId", info.subjectId())
@@ -69,4 +82,5 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 
 	private static final String CAN_USER_ACCESS = FQN + ".canUserAccess";
 	
+	private static final String CAN_USER_ACCESS_ON_SITE = FQN + ".canUserAccessOnSite";
 }

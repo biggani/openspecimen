@@ -1,6 +1,6 @@
 package com.krishagni.catissueplus.core.common.events;
 
-public enum OpenSpecimenResource {
+public enum Resource {
 	CP("collection-protocol"),
 	
 	CPR("collection-protocol-registration"),
@@ -11,7 +11,7 @@ public enum OpenSpecimenResource {
 	
 	private final String text;
 	
-	private OpenSpecimenResource(String text) {
+	private Resource(String text) {
 		this.text = text;
 	}
 	

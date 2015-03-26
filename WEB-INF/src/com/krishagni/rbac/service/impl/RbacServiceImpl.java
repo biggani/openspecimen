@@ -451,7 +451,7 @@ public class RbacServiceImpl implements RbacService {
 	
 	@Override
 	@PlusTransactional
-	public boolean checkAccess(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
+	public boolean canPerformOperation(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
 		try {			
 			UserAccessCriteria criteria = new UserAccessCriteria()
 					.subjectId(subjectId)
@@ -477,12 +477,12 @@ public class RbacServiceImpl implements RbacService {
 	@Override
 	@PlusTransactional
 	public List<CpSiteInfo> getAccessibleCpSites(Long userId, String resource, String operation) {
-		UserAccessCriteria accessInfo = new UserAccessCriteria()
+		UserAccessCriteria crit = new UserAccessCriteria()
 				.subjectId(userId)
 				.operation(operation)
 				.resource(resource);
 		
-		return daoFactory.getSubjectDao().getAccessibleCpSites(accessInfo);
+		return daoFactory.getSubjectDao().getAccessibleCpSites(crit);
 	}
 	
 	//

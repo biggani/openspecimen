@@ -32,6 +32,20 @@
         SUBJECT_ID = :subjectId and
         RESOURCE = :resource and
         OPERATION = :operation and
+        (CP_ID = :cpId or CP_ID is null) 
+    </sql-query>
+    
+    <sql-query name="canUserAccessOnSite" >
+      <return-scalar column="SUBJECT_ID" type="long"/>
+      
+      select 
+        SUBJECT_ID
+      from
+        RBAC_SUBJECT_ACCESS_VIEW
+      where
+        SUBJECT_ID = :subjectId and
+        RESOURCE = :resource and
+        OPERATION = :operation and
         (CP_ID = :cpId or CP_ID is null) and
         (SITE_ID in (:siteIds) or SITE_ID is null)
     </sql-query>

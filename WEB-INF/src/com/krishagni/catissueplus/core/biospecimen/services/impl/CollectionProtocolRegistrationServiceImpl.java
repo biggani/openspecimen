@@ -35,12 +35,12 @@ import com.krishagni.catissueplus.core.biospecimen.repository.DaoFactory;
 import com.krishagni.catissueplus.core.biospecimen.repository.VisitsListCriteria;
 import com.krishagni.catissueplus.core.biospecimen.services.CollectionProtocolRegistrationService;
 import com.krishagni.catissueplus.core.biospecimen.services.ParticipantService;
-import com.krishagni.catissueplus.core.common.AccessCtrlManager;
 import com.krishagni.catissueplus.core.common.PlusTransactional;
+import com.krishagni.catissueplus.core.common.access.AccessCtrlMgr;
 import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
-import com.krishagni.catissueplus.core.common.events.OpenSpecimenResource;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
+import com.krishagni.catissueplus.core.common.events.Resource;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
 
 public class CollectionProtocolRegistrationServiceImpl implements CollectionProtocolRegistrationService {
@@ -100,10 +100,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			CollectionProtocolRegistrationDetail cprDetail = req.getPayload();
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(cprDetail);
 			
-			if (!AccessCtrlManager.getInstance().hasCreatePermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
-				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
-			}
-			
+			ensureUserHasCreatePermissionOnCpr(cpr);
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			
 			ensureUniqueParticipantReg(cpr, ose);
@@ -140,9 +137,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			}
 			
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(detail);
-			if (!AccessCtrlManager.getInstance().hasUpdatePermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
-				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
-			}
+			ensureUserHasUpdatePermissionOnCpr(cpr);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniquePpid(existing, cpr, ose);
@@ -166,6 +161,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	@PlusTransactional
 	public ResponseEvent<List<VisitSummary>> getVisits(RequestEvent<VisitsListCriteria> req) {
 		try {
+			ensureUserHasReadPermissionOnVisit(req.getPayload().cprId());
 			return ResponseEvent.response(daoFactory.getVisitsDao().getVisits(req.getPayload()));
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -202,10 +198,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			Visit visit = visitFactory.createVisit(req.getPayload()); 
 			visit.setName(UUID.randomUUID().toString()); 
 
-			if (!AccessCtrlManager.getInstance().hasCreatePermissions(OpenSpecimenResource.VISIT, visit.getCollectionProtocol(), 
-					getSites(visit.getRegistration()))) {
-				return ResponseEvent.userError(CprErrorCode.ACCESS_DENIED);
-			}
+			ensureUserHasCreatePermissionOnVisit(visit.getRegistration());
 			daoFactory.getVisitsDao().saveOrUpdate(visit); 
 			return ResponseEvent.response(VisitDetail.from(visit));			
 		} catch (OpenSpecimenException ose) {
@@ -239,6 +232,32 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
+	}
+	
+	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().hasCreatePermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().hasUpdatePermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().hasReadPermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
+		CollectionProtocolRegistration cpr = daoFactory.getCprDao().getById(cprId);
+		
+		if (cpr == null) {
+			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
+		}
+		
+		AccessCtrlMgr.getInstance().hasReadPermissions(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().hasCreatePermissions(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
@@ -352,10 +371,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
-		if (!AccessCtrlManager.getInstance().hasReadPermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
-			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
-		}
-		
+		ensureUserHasReadPermissionOnCpr(cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
@@ -365,10 +381,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.INVALID_CP_AND_PPID);
 		}
 		
-		if (!AccessCtrlManager.getInstance().hasReadPermissions(OpenSpecimenResource.CPR, cpr.getCollectionProtocol(), getSites(cpr))) {
-			throw OpenSpecimenException.userError(CprErrorCode.ACCESS_DENIED);
-		}
-		
+		ensureUserHasReadPermissionOnCpr(cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	

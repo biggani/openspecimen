@@ -1,6 +1,6 @@
 package com.krishagni.catissueplus.core.common.events;
 
-public enum OpenSpecimenOperation {
+public enum Operation {
 	CREATE("create"),
 	
 	READ("read"),
@@ -11,7 +11,7 @@ public enum OpenSpecimenOperation {
 	
 	private final String text;
 	
-	private OpenSpecimenOperation(String text) {
+	private Operation(String text) {
 		this.text = text;
 	}
 	
