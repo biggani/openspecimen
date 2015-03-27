@@ -34,7 +34,9 @@ public enum RbacErrorCode implements ErrorCode {
 	
 	CP_SITE_COMBI_NOT_FOUND,
 	
-	ACCESS_DENIED;
+	ACCESS_DENIED,
+	
+	ADMIN_PRIVILEGES_REQUIRED;
 	
 	@Override
 	public String code() {

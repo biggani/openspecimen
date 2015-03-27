@@ -235,15 +235,15 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	}
 	
 	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().hasCreatePermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().hasUpdatePermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().hasReadPermissions(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.CPR, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
@@ -253,11 +253,11 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
-		AccessCtrlMgr.getInstance().hasReadPermissions(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().hasCreatePermissions(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
 	}
 	
 	private Set<Site> getSites(CollectionProtocolRegistration cpr) {

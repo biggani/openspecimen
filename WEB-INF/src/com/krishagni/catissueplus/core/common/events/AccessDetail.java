@@ -18,7 +18,7 @@ public class AccessDetail {
 		accessAll = canAccessAll;
 	}
 
-	public Boolean getAccessAll() {
+	public Boolean canAccessAll() {
 		return accessAll;
 	}
 
@@ -35,14 +35,6 @@ public class AccessDetail {
 	}
 	
 	public boolean isAccessAllowed() {
-		if (accessAll == true) {
-			return true;
-		}
-		
-		if (!ids.isEmpty()) {
-			return true;
-		}
-		
-		return false;
+		return accessAll || !ids.isEmpty();
 	}
 }

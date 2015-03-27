@@ -72,7 +72,7 @@ public interface RbacService {
 	//
 	// Intern API's can change without notice.
 	//
-	public boolean canPerformOperation(Long userId, String resource, String operation, Long cpId, Set<Long> sites);
+	public boolean canUserPerformOp(Long userId, String resource, String operation, Long cpId, Set<Long> sites);
 	
 	public List<CpSiteInfo> getAccessibleCpSites(Long userId, String resource, String operation);
 }

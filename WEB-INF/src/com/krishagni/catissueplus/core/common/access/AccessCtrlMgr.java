@@ -1,5 +1,6 @@
 package com.krishagni.catissueplus.core.common.access;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,95 +45,95 @@ public class AccessCtrlMgr {
 	}
 	
 	public void ensureUserIsAdmin() {
-		User currentUser = AuthUtil.getCurrentUser();
+		User user = AuthUtil.getCurrentUser();
 		
-		if (!currentUser.isAdmin()) {
-			accessDenied();
+		if (!user.isAdmin()) {
+			throwAdminAccessRequired();
 		}
 	}
 	
-	public void hasReadPermissions(Resource resource, CollectionProtocol cp, Set<Site> sites) {
-		User currentUser = AuthUtil.getCurrentUser();
-		if (currentUser.isAdmin()) {
+	public void ensureReadPermission(Resource resource, CollectionProtocol cp, Set<Site> sites) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
 			return;
 		}
 		
-		if (!rbacService.canPerformOperation( 
-				currentUser.getId(), 
-				resource.toString(), 
-				Operation.READ.toString(), 
+		if (!rbacService.canUserPerformOp( 
+				user.getId(), 
+				resource.getName(), 
+				Operation.READ.getName(), 
 				cp.getId(), 
 				getSiteIds(sites))) {
-			accessDenied();
+			throwAccessDenied();
 		}
 	}
 	
-	public void hasCreatePermissions(Resource resource, CollectionProtocol cp, Set<Site> sites) {
-		User currentUser = AuthUtil.getCurrentUser();
-		if (currentUser.isAdmin()) {
+	public void ensureCreatePermission(Resource resource, CollectionProtocol cp, Set<Site> sites) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
 			return;
 		}
 		
-		if(!rbacService.canPerformOperation(
-				currentUser.getId(), 
-				resource.toString(), 
-				Operation.CREATE.toString(), 
+		if(!rbacService.canUserPerformOp(
+				user.getId(), 
+				resource.getName(), 
+				Operation.CREATE.getName(), 
 				cp.getId(), 
 				getSiteIds(sites))) {
-			accessDenied();
+			throwAccessDenied();
 		}
 	}
 	
-	public void hasUpdatePermissions(Resource resource, CollectionProtocol cp, Set<Site> sites) {
-		User currentUser = AuthUtil.getCurrentUser();
-		if (currentUser.isAdmin()) {
+	public void ensureUpdatePermission(Resource resource, CollectionProtocol cp, Set<Site> sites) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
 			return;
 		}
 		
-		if(!rbacService.canPerformOperation(
-				currentUser.getId(), 
-				resource.toString(), 
-				Operation.UPDATE.toString(), 
+		if(!rbacService.canUserPerformOp(
+				user.getId(), 
+				resource.getName(), 
+				Operation.UPDATE.getName(), 
 				cp.getId(), 
 				getSiteIds(sites))) {
-			accessDenied();
+			throwAccessDenied();
 		}
 	}
 	
-	public void hasDeletePermissions(Resource resource, CollectionProtocol cp, Set<Site> sites) {
-		User currentUser = AuthUtil.getCurrentUser();
-		if (currentUser.isAdmin()) {
+	public void ensureDeletePermission(Resource resource, CollectionProtocol cp, Set<Site> sites) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
 			return;
 		}
 		
-		if(!rbacService.canPerformOperation(
-				currentUser.getId(), 
-				resource.toString(), 
-				Operation.DELETE.toString(), 
+		if(!rbacService.canUserPerformOp(
+				user.getId(), 
+				resource.getName(), 
+				Operation.DELETE.getName(), 
 				cp.getId(), 
 				getSiteIds(sites))) {
-			accessDenied();
+			throwAccessDenied();
 		}
 	}
 	
 	public AccessDetail getReadableCpIds() {
-		User currentUser = AuthUtil.getCurrentUser();
-		if (currentUser.isAdmin()) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
 			return AccessDetail.ACCESS_TO_ALL;
 		}
 		
 		List<CpSiteInfo> cpSites = rbacService.getAccessibleCpSites(
-				currentUser.getId(), 
-				Resource.CP.toString(), 
-				Operation.READ.toString());
+				user.getId(), 
+				Resource.CP.getName(), 
+				Operation.READ.getName());
 		
 		Set<Long> readableCps = new HashSet<Long>();
 		Set<Long> sitesToBeFetched = new HashSet<Long>();
-		AccessDetail objAccess = new AccessDetail(false);
 		
+		AccessDetail accessDetail = new AccessDetail(false);		
 		for (CpSiteInfo cpSite : cpSites) {
 			if (cpSite.getCpId() == null && cpSite.getSiteId() == null) {
-				objAccess.setAccessAll(true);
+				accessDetail.setAccessAll(true);
 				break;
 			} else if (cpSite.getCpId() != null) {
 				readableCps.add(cpSite.getCpId());
@@ -141,28 +142,33 @@ public class AccessCtrlMgr {
 			}
 		}
 		
-		if (sitesToBeFetched.size() > 0 && !objAccess.getAccessAll()) {
-			readableCps.addAll(daoFactory.getCollectionProtocolDao().getCpIdsBySiteIds(sitesToBeFetched));
+		if (!sitesToBeFetched.isEmpty() && !accessDetail.canAccessAll()) {
+			List<Long> ids = new ArrayList<Long>(sitesToBeFetched);
+			readableCps.addAll(daoFactory.getCollectionProtocolDao().getCpIdsBySiteIds(ids));
 		}
 		
-		objAccess.setIds(readableCps);
-		if (!objAccess.isAccessAllowed()) {
-			accessDenied();
+		accessDetail.setIds(readableCps);
+		if (!accessDetail.isAccessAllowed()) {
+			throwAccessDenied();
 		}
-		return objAccess;
-	}
-	
-	private void accessDenied() {
-		throw OpenSpecimenException.userError(RbacErrorCode.ACCESS_DENIED);
+		
+		return accessDetail;
 	}
 	
 	private Set<Long> getSiteIds(Set<Site> sites) {
-		Set<Long> siteIds = new HashSet<Long>();
-		
+		Set<Long> siteIds = new HashSet<Long>();		
 		for (Site site : sites) {
 			siteIds.add(site.getId());
 		}
 		
 		return siteIds;
+	}
+
+	private void throwAdminAccessRequired() {
+		throw OpenSpecimenException.userError(RbacErrorCode.ADMIN_PRIVILEGES_REQUIRED);
+	}
+	
+	private void throwAccessDenied() {
+		throw OpenSpecimenException.userError(RbacErrorCode.ACCESS_DENIED);
 	}
 }

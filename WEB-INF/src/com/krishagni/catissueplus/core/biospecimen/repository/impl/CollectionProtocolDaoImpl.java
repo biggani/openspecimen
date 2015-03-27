@@ -6,10 +6,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -97,18 +95,13 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public Set<Long> getCpIdsBySiteIds(Set<Long> siteIds) {
-		List<Object> rows = sessionFactory.getCurrentSession()
-				.getNamedQuery(GET_CPIDS_BY_SITEIDS)
+	public List<Long> getCpIdsBySiteIds(List<Long> siteIds) {
+		List<Long> rows = sessionFactory.getCurrentSession()
+				.getNamedQuery(GET_CP_IDS_BY_SITE_IDS)
 				.setParameterList("siteIds", siteIds)
 				.list();
 		
-		Set<Long> result = new HashSet<Long>();
-		for (Object row : rows) {
-			result.add((Long)row);
-		}
-		
-		return result;
+		return new ArrayList<Long>(rows);
 	}
 	
 	@Override
@@ -171,10 +164,11 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 				.setMaxResults(cpCriteria.maxResults())
 				.add(Restrictions.eq("activityStatus", Constants.ACTIVITY_STATUS_ACTIVE))
 				.createAlias("principalInvestigator", "pi");
+		
 		addSearchConditions(query, cpCriteria);
 		addProjections(query, cpCriteria);
 		
-		return query.addOrder(Order.asc("title")).list();
+		return query.addOrder(Order.asc("shortTitle")).list();
 	}
 	
 	private void addSearchConditions(Criteria query, CpListCriteria cpCriteria) {
@@ -199,10 +193,8 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 		if (piId != null) {
 			query.add(Restrictions.eq("pi.id", piId));
 		}
-		
-		if (!cpCriteria.ids().isEmpty()) {
-			applyINPropertyFilter(query, "id", cpCriteria.ids());
-		}
+				
+		applyIdsFilter(query, "id", cpCriteria.ids());
 	}
 	
 	private void addProjections(Criteria query, CpListCriteria cpCriteria) {
@@ -253,5 +245,5 @@ public class CollectionProtocolDaoImpl extends AbstractDao<CollectionProtocol> i
 	
 	private static final String GET_CPS_BY_SHORT_TITLE = FQN + ".getCpsByShortTitle";
 	
-	private static final String GET_CPIDS_BY_SITEIDS = FQN + ".getCpIdsBySiteIds";
+	private static final String GET_CP_IDS_BY_SITE_IDS = FQN + ".getCpIdsBySiteIds";
 }

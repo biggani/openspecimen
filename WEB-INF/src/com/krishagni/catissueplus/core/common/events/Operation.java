@@ -1,22 +1,21 @@
 package com.krishagni.catissueplus.core.common.events;
 
 public enum Operation {
-	CREATE("create"),
+	CREATE("Create"), 
 	
-	READ("read"),
+	READ("Read"),
 	
-	UPDATE("update"),
+	UPDATE("Update"),
 	
-	DELETE("delete");
+	DELETE("Delete");
 	
-	private final String text;
+	private final String name; 
 	
-	private Operation(String text) {
-		this.text = text;
+	private Operation(String name) {
+		this.name = name;
 	}
 	
-	@Override
-	public String toString() {
-		return text;
+	public String getName() { 
+		return name;
 	}
 }

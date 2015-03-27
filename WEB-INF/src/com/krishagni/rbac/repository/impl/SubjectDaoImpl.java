@@ -3,6 +3,9 @@ package com.krishagni.rbac.repository.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.hibernate.Query;
+
 import com.krishagni.catissueplus.core.common.repository.AbstractDao;
 import com.krishagni.rbac.domain.Subject;
 import com.krishagni.rbac.events.CpSiteInfo;
@@ -20,48 +23,37 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<CpSiteInfo> getAccessibleCpSites(UserAccessCriteria accessInfo) {
+	public List<CpSiteInfo> getCpSiteForOpExecution(UserAccessCriteria uac) {
 		List<Object[]> rows = sessionFactory.getCurrentSession()
-				.getNamedQuery(GET_CP_SITE_ACCESS_INFO)
-				.setString("resource", accessInfo.resource())
-				.setString("operation", accessInfo.operation())
-				.setLong("userId", accessInfo.subjectId())
+				.getNamedQuery(GET_CP_SITE_FOR_OP_EXEC)
+				.setString("resource", uac.resource())
+				.setString("operation", uac.operation())
+				.setLong("userId", uac.subjectId())
 				.list();
 		
 		return getCpSites(rows);
 	}
 	
 	@Override
-	public boolean canUserAccess(UserAccessCriteria info) {
-		return info.sites().isEmpty() ? canUserAccessOnCp(info) : canUserAccessOnCpAndSite(info); 
-	}
-	
-	@SuppressWarnings("unchecked")
-	private boolean canUserAccessOnCp(UserAccessCriteria info) {
-		List<Object[]> result = sessionFactory.getCurrentSession()
-				.getNamedQuery(CAN_USER_ACCESS)
-				.setString("resource", info.resource())
-				.setString("operation", info.operation())
-				.setLong("subjectId", info.subjectId())
-				.setLong("cpId", info.cpId())
-				.list();
+	public boolean canUserPerformOp(UserAccessCriteria crit) {
+		Query query = null;
 		
-		return !result.isEmpty();
-	}
-	
-	@SuppressWarnings("unchecked")
-	private boolean canUserAccessOnCpAndSite(UserAccessCriteria info) {
-		List<Object[]> result = sessionFactory.getCurrentSession()
-				.getNamedQuery(CAN_USER_ACCESS_ON_SITE)
-				.setString("resource", info.resource())
-				.setString("operation", info.operation())
-				.setLong("subjectId", info.subjectId())
-				.setLong("cpId", info.cpId())
-				.setParameterList("siteIds", info.sites())
-				.list();
+		if (CollectionUtils.isNotEmpty(crit.sites())) {
+			query = sessionFactory.getCurrentSession()
+					.getNamedQuery(CAN_USER_PERFORM_OP_ON_CP_SITE)
+					.setParameterList("siteIds", crit.sites());
+		} else {
+			query = sessionFactory.getCurrentSession()
+				.getNamedQuery(CAN_USER_PERFORM_OP_ON_CP);
+		}
 		
-		return !result.isEmpty();
-	}
+		query.setString("resource", crit.resource())
+			.setString("operation", crit.operation())
+			.setLong("subjectId", crit.subjectId())
+			.setLong("cpId", crit.cpId());
+		
+		return CollectionUtils.isNotEmpty(query.list()); 
+	}	
 	
 	/*
 	 * Private methods
@@ -78,9 +70,9 @@ public class SubjectDaoImpl extends AbstractDao<Subject> implements SubjectDao {
 	
 	private static final String FQN = Subject.class.getName();
 
-	private static final String GET_CP_SITE_ACCESS_INFO = FQN + ".getCpSiteAccessInfo";
+	private static final String GET_CP_SITE_FOR_OP_EXEC = FQN + ".getCpSiteForOpExec";
 
-	private static final String CAN_USER_ACCESS = FQN + ".canUserAccess";
+	private static final String CAN_USER_PERFORM_OP_ON_CP = FQN + ".canUserPerformOpOnCp";
 	
-	private static final String CAN_USER_ACCESS_ON_SITE = FQN + ".canUserAccessOnSite";
+	private static final String CAN_USER_PERFORM_OP_ON_CP_SITE = FQN + ".canUserPerformOpOnCpSite";
 }

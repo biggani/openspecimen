@@ -3,10 +3,13 @@ package com.krishagni.catissueplus.core.biospecimen.services.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
+import com.krishagni.catissueplus.core.administrative.domain.User;
 import com.krishagni.catissueplus.core.biospecimen.domain.AliquotSpecimensRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
@@ -43,6 +46,7 @@ import com.krishagni.catissueplus.core.common.events.AccessDetail;
 import com.krishagni.catissueplus.core.common.events.Resource;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
+import com.krishagni.catissueplus.core.common.util.AuthUtil;
 
 import edu.wustl.common.beans.SessionDataBean;
 
@@ -93,21 +97,14 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	public ResponseEvent<List<CollectionProtocolSummary>> getProtocols(RequestEvent<CpListCriteria> req) {
 		try {
 			AccessDetail accessDetail = AccessCtrlMgr.getInstance().getReadableCpIds();
-			CpListCriteria crit = req.getPayload();
 			
-			if (!accessDetail.getAccessAll()) {
+			CpListCriteria crit = req.getPayload();			
+			if (!accessDetail.canAccessAll()) {
 				crit.ids(accessDetail.getIds());
 			}
 			
-			List<CollectionProtocolSummary> cpList = daoFactory.getCollectionProtocolDao().getCollectionProtocols(crit);
-			
-			List<CollectionProtocolSummary> result = new ArrayList<CollectionProtocolSummary>();
-			for (CollectionProtocolSummary collectionProtocolSummary : cpList) {
-				result.add(collectionProtocolSummary);
-			}
-			
-			Collections.sort(result);
-			return ResponseEvent.response(result);
+			List<CollectionProtocolSummary> cpList = daoFactory.getCollectionProtocolDao().getCollectionProtocols(crit);			
+			return ResponseEvent.response(cpList);
 		} catch (OpenSpecimenException oce) {
 			return ResponseEvent.error(oce);
 		} catch (Exception e) {
@@ -159,9 +156,9 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	@PlusTransactional
 	public ResponseEvent<CollectionProtocolDetail> createCollectionProtocol(RequestEvent<CollectionProtocolDetail> req) {
 		try {
-			ensureIsAdmin();
 			CollectionProtocol cp = cpFactory.createCollectionProtocol(req.getPayload());
-
+			ensureUserHasCreatePermission(cp);
+			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniqueTitle(cp.getTitle(), ose);
 			ensureUniqueShortTitle(cp.getShortTitle(), ose);
@@ -230,6 +227,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 			}
 			
 			ensureUserHasUpdatePermission(cp);
+			
 			ConsentTierDetail input = opDetail.getConsentTier();
 			ConsentTier resp = null;
 			
@@ -358,6 +356,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 			
 			CollectionProtocol cp = existing.getCollectionProtocol();
 			ensureUserHasUpdatePermission(cp);
+			
 			CollectionProtocolEvent cpe = cpeFactory.createCpeCopy(opDetail.getCpe(), existing);
 			existing.copySpecimenRequirementsTo(cpe);			
 			cp.addCpe(cpe);			
@@ -399,7 +398,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 				return ResponseEvent.userError(SrErrorCode.NOT_FOUND);
 			}
 			
-			ensureUserHasReadPermission(sr.getCollectionProtocolEvent().getCollectionProtocol());
+			ensureUserHasReadPermission(sr.getCollectionProtocol());
 			return ResponseEvent.response(SpecimenRequirementDetail.from(sr));				
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -414,9 +413,10 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	public ResponseEvent<SpecimenRequirementDetail> addSpecimenRequirement(RequestEvent<SpecimenRequirementDetail> req) {
 		try {
 			SpecimenRequirement requirement = srFactory.createSpecimenRequirement(req.getPayload());
+			
 			CollectionProtocolEvent cpe = requirement.getCollectionProtocolEvent();
-
 			ensureUserHasUpdatePermission(cpe.getCollectionProtocol());
+			
 			cpe.addSpecimenRequirement(requirement);
 			daoFactory.getCollectionProtocolDao().saveCpe(cpe, true);
 			return ResponseEvent.response(SpecimenRequirementDetail.from(requirement));
@@ -435,9 +435,9 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 			List<SpecimenRequirement> aliquots = srFactory.createAliquots(requirement);
 			
 			SpecimenRequirement parent = daoFactory.getSpecimenRequirementDao().getById(requirement.getParentSrId());
-			parent.addChildRequirements(aliquots);
+			ensureUserHasUpdatePermission(parent.getCollectionProtocol());
 			
-			ensureUserHasUpdatePermission(parent.getCollectionProtocolEvent().getCollectionProtocol());
+			parent.addChildRequirements(aliquots);			
 			daoFactory.getSpecimenRequirementDao().saveOrUpdate(parent, true);
 			return ResponseEvent.response(SpecimenRequirementDetail.from(aliquots));
 		} catch (OpenSpecimenException ose) {
@@ -452,9 +452,9 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	public ResponseEvent<SpecimenRequirementDetail> createDerived(RequestEvent<DerivedSpecimenRequirement> req) {
 		try {
 			DerivedSpecimenRequirement requirement = req.getPayload();
-			SpecimenRequirement derived = srFactory.createDerived(requirement);			
+			SpecimenRequirement derived = srFactory.createDerived(requirement);						
+			ensureUserHasUpdatePermission(derived.getCollectionProtocol());
 			
-			ensureUserHasUpdatePermission(derived.getCollectionProtocolEvent().getCollectionProtocol());
 			daoFactory.getSpecimenRequirementDao().saveOrUpdate(derived, true);
 			return ResponseEvent.response(SpecimenRequirementDetail.from(derived));
 		} catch (OpenSpecimenException ose) {
@@ -475,7 +475,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 				throw OpenSpecimenException.userError(SrErrorCode.NOT_FOUND);
 			}
 			
-			ensureUserHasUpdatePermission(sr.getCollectionProtocolEvent().getCollectionProtocol());
+			ensureUserHasUpdatePermission(sr.getCollectionProtocol());
 			SpecimenRequirement copy = sr.deepCopy(null);
 			daoFactory.getSpecimenRequirementDao().saveOrUpdate(copy, true);
 			return ResponseEvent.response(SpecimenRequirementDetail.from(copy));
@@ -486,18 +486,68 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 		}
 	}
 	
+	private void ensureUserHasCreatePermission(CollectionProtocol cp) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.CP, cp, cp.getSites());
+		ensureUserSitesBelongToCpSite(cp);
+		ensurePISitesBelongToCpSite(cp);
+		ensureCoordSitesBelongToCpSite(cp);
+	}
+	
+	private void ensureUserSitesBelongToCpSite(CollectionProtocol cp) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
+			return;
+		}
+		
+		Set<Site> userSites = user.getSites();
+		Set<Site> cpSites = cp.getSites();
+		
+		if (!userSites.containsAll(cpSites)) {
+			throw OpenSpecimenException.userError(CpErrorCode.USER_DOESNT_BELONG_TO_CP_SITES);
+		}
+	}
+	
+	private void ensurePISitesBelongToCpSite(CollectionProtocol cp) {
+		Set<Site> piSites = cp.getPrincipalInvestigator().getSites();
+		Set<Site> cpsites = cp.getSites();
+		
+		if (!hasAtleastOneSiteInCommon(cpsites, piSites)) {
+			throw OpenSpecimenException.userError(CpErrorCode.PI_DOESNT_BELONG_CP_SITE);
+		}
+	}
+	
+	private void ensureCoordSitesBelongToCpSite(CollectionProtocol cp) {
+		Set<Site> cpSites = cp.getSites();
+		Set<User> coordinators = cp.getCoordinators();
+		
+		for (User coordinator : coordinators) {
+			Set<Site> coordinatorSites = coordinator.getSites();
+			if (!hasAtleastOneSiteInCommon(cpSites, coordinatorSites)) {
+				throw OpenSpecimenException.userError(CpErrorCode.CO_ORD_DOESNT_BELONG_CP_SITE);
+			}
+		}
+	}
+	
+	private boolean hasAtleastOneSiteInCommon(Set<Site> arg1, Set<Site> arg2) {
+		for (Site site1 : arg1) {
+			for (Site site2 : arg2) {
+				if (site1.equals(site2)) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
 	private void ensureUserHasReadPermission(CollectionProtocol cp) {
-		AccessCtrlMgr.getInstance().hasReadPermissions(Resource.CP, cp, cp.getSites());		
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.CP, cp, cp.getSites());		
 	}
 	
 	private void ensureUserHasUpdatePermission(CollectionProtocol cp) {
-		AccessCtrlMgr.getInstance().hasUpdatePermissions(Resource.CP, cp, cp.getSites());		
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.CP, cp, cp.getSites());		
 	}
-	
-	private void ensureIsAdmin() {
-		AccessCtrlMgr.getInstance().ensureUserIsAdmin();
-	}
-	
+		
 	private void ensureUniqueTitle(String title, OpenSpecimenException ose) {
 		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getCollectionProtocol(title);
 		if (cp != null) {

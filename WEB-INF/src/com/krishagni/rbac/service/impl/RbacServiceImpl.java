@@ -451,22 +451,22 @@ public class RbacServiceImpl implements RbacService {
 	
 	@Override
 	@PlusTransactional
-	public boolean canPerformOperation(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
+	public boolean canUserPerformOp(Long subjectId, String resource, String operation, Long cpId, Set<Long> sites) {
 		try {			
-			UserAccessCriteria criteria = new UserAccessCriteria()
+			UserAccessCriteria uac = new UserAccessCriteria()
 					.subjectId(subjectId)
 					.resource(resource)
 					.operation(operation)
 					.cpId(cpId)
 					.sites(sites);
 			
-			if ((criteria.subjectId() == null) || 
-				StringUtils.isEmpty(criteria.resource()) ||
-				StringUtils.isEmpty(criteria.operation()) ) {
+			if ((uac.subjectId() == null) || 
+				StringUtils.isBlank(uac.resource()) ||
+				StringUtils.isBlank(uac.operation()) ) {
 				throw OpenSpecimenException.userError(RbacErrorCode.INSUFFICIENT_USER_DETAILS);
 			}
 			
-			return daoFactory.getSubjectDao().canUserAccess(criteria);
+			return daoFactory.getSubjectDao().canUserPerformOp(uac);
 		} catch (OpenSpecimenException oce) {
 			throw oce;
 		} catch (Exception e) {
@@ -482,7 +482,7 @@ public class RbacServiceImpl implements RbacService {
 				.operation(operation)
 				.resource(resource);
 		
-		return daoFactory.getSubjectDao().getAccessibleCpSites(crit);
+		return daoFactory.getSubjectDao().getCpSiteForOpExecution(crit);
 	}
 	
 	//

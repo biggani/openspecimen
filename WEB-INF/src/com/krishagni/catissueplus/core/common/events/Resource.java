@@ -1,22 +1,29 @@
 package com.krishagni.catissueplus.core.common.events;
 
 public enum Resource {
-	CP("collection-protocol"),
+	CP("CollectionProtocol"),
 	
-	CPR("collection-protocol-registration"),
+	CPR("Participant (PHI)"),
 	
-	VISIT("visit"),
+	VISIT("Visit"),
 	
-	SPECIMEN("specimen");
+	SPECIMEN("Specimen"),
 	
-	private final String text;
+	ORDER("Order"),
 	
-	private Resource(String text) {
-		this.text = text;
+	STORAGE_CONTAINER("StorageContainer"),
+	
+	USER("User"),
+	
+	DISTRIBUTION_ORDER("DistributionOrder");
+	
+	private final String name;
+	
+	private Resource(String name) {
+		this.name = name;
 	}
 	
-	@Override
-	public String toString() {
-		return text;
+	public String getName() { 
+		return name;
 	}
 }

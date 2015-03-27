@@ -10,7 +10,7 @@ import com.krishagni.rbac.events.UserAccessCriteria;
 public interface SubjectDao extends Dao<Subject> {
 	public Subject getSubject(Long subjectId);
 	
-	public List<CpSiteInfo> getAccessibleCpSites(UserAccessCriteria accessInfo);
+	public List<CpSiteInfo> getCpSiteForOpExecution(UserAccessCriteria uac);
 	
-	public boolean canUserAccess(UserAccessCriteria accessInfo);
+	public boolean canUserPerformOp(UserAccessCriteria uac);
 }

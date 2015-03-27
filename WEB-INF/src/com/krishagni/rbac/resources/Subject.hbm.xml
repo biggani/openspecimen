@@ -21,47 +21,47 @@
       <one-to-many class="com.krishagni.rbac.domain.SubjectRole"/>
     </set>
     
-    <sql-query name="canUserAccess" >
-      <return-scalar column="SUBJECT_ID" type="long"/>
+    <sql-query name="canUserPerformOpOnCp" >
+      <return-scalar column="subjectId" type="long"/>
       
       select 
-        SUBJECT_ID
+        subject_id as subjectId
       from
-        RBAC_SUBJECT_ACCESS_VIEW
+        rbac_subject_access_view
       where
-        SUBJECT_ID = :subjectId and
-        RESOURCE = :resource and
-        OPERATION = :operation and
-        (CP_ID = :cpId or CP_ID is null) 
+        subject_id = :subjectId and
+        resource = :resource and
+        operation = :operation and
+        (cp_id = :cpId or cp_id is null) 
     </sql-query>
     
-    <sql-query name="canUserAccessOnSite" >
-      <return-scalar column="SUBJECT_ID" type="long"/>
+    <sql-query name="canUserPerformOpOnCpSite" >
+      <return-scalar column="subjectId" type="long"/>
       
-      select 
-        SUBJECT_ID
+      select  
+        subject_id as subjectId
       from
-        RBAC_SUBJECT_ACCESS_VIEW
+        rbac_subject_access_view
       where
-        SUBJECT_ID = :subjectId and
-        RESOURCE = :resource and
-        OPERATION = :operation and
-        (CP_ID = :cpId or CP_ID is null) and
-        (SITE_ID in (:siteIds) or SITE_ID is null)
+        subject_id = :subjectId and
+        resource = :resource and
+        operation = :operation and
+        (cp_id = :cpId or cp_id is null) and
+        (site_id in (:siteIds) or site_id is null)
     </sql-query>
     
-    <sql-query name="getCpSiteAccessInfo">
-      <return-scalar column="CP_ID" type="long"/>
-      <return-scalar column="SITE_ID" type="long"/>
+    <sql-query name="getCpSiteForOpExec">
+      <return-scalar column="cpId" type="long"/>
+      <return-scalar column="siteId" type="long"/>
 
       select
-        CP_ID, SITE_ID
+        cp_id as cpId, site_id as siteId 
       from 
-        RBAC_SUBJECT_ACCESS_VIEW
+        rbac_subject_access_view
       where
-        RESOURCE = :resource 
-        and OPERATION = :operation
-        and SUBJECT_ID = :userId
+        resource = :resource 
+        and operation = :operation
+        and subject_id = :userId
     </sql-query>
   </class>  
 </hibernate-mapping>

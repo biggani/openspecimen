@@ -127,13 +127,18 @@
     </query>
     
     <sql-query name="getCpIdsBySiteIds">
-      <return-scalar column="CP_ID" type="long"/>
+      <return-scalar column="cpId" type="long"/> 
+      
       select
-        COLLECTION_PROTOCOL_ID AS CP_ID
+        siteCp.collection_protocol_id as cpId
       from
-        CATISSUE_SITE_CP
+        catissue_site_cp siteCp 
+        inner join catissue_collection_protocol cp on siteCp.collection_protocol_id = cp.identifier
+        inner join catissue_site site on site.identifier = siteCp.site_id
       where
-        SITE_ID in (:siteIds)
+        cp.activity_status = 'Active' 
+        and site.activity_status = 'Active'
+        and siteCp.site_id in (:siteIds)
     </sql-query>
   </class>
 </hibernate-mapping>
