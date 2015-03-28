@@ -144,9 +144,14 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	@PlusTransactional
 	public ResponseEvent<List<CprSummary>> getRegisteredParticipants(RequestEvent<CprListCriteria> req) {
 		try {	
-			//TODO: add participant permission checking 
 			CprListCriteria listCrit = req.getPayload();
+
+			boolean userHasPhiRead = userHasPhiAccess(listCrit.cpId());
+			listCrit.includePhi(listCrit.includePhi() && userHasPhiRead);
+			
 			return ResponseEvent.response(daoFactory.getCprDao().getCprList(listCrit));
+		} catch (OpenSpecimenException oce) {
+			return ResponseEvent.error(oce);
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
@@ -575,6 +580,24 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 	
 	private void ensureUserHasUpdatePermission(CollectionProtocol cp) {
 		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.CP, cp, cp.getRepositories());		
+	}
+	
+	private boolean userHasPhiAccess(Long cpId) {
+		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getById(cpId);
+		
+		if (cp == null) {
+			throw OpenSpecimenException.userError(CpErrorCode.NOT_FOUND);
+		}
+		
+		ensureUserHasReadPermission(cp);
+		boolean hasPhiAccess = true;
+		try {
+			AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cp, cp.getRepositories());
+		} catch (OpenSpecimenException oce) {
+			hasPhiAccess = false;
+		}
+		
+		return hasPhiAccess;
 	}
 	
 	private void ensureUniqueTitle(CollectionProtocol existingCp, CollectionProtocol cp, OpenSpecimenException ose) {

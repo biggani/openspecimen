@@ -2,13 +2,19 @@
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.biospecimen.ConfigParams;
+import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
+import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
+import com.krishagni.catissueplus.core.biospecimen.domain.ParticipantMedicalIdentifier;
 import com.krishagni.catissueplus.core.biospecimen.domain.Specimen;
 import com.krishagni.catissueplus.core.biospecimen.domain.SpecimenLabelPrintJob;
 import com.krishagni.catissueplus.core.biospecimen.domain.factory.SpecimenErrorCode;
@@ -22,10 +28,12 @@ import com.krishagni.catissueplus.core.biospecimen.services.SpecimenLabelPrinter
 import com.krishagni.catissueplus.core.biospecimen.services.SpecimenService;
 import com.krishagni.catissueplus.core.common.OpenSpecimenAppCtxProvider;
 import com.krishagni.catissueplus.core.common.PlusTransactional;
+import com.krishagni.catissueplus.core.common.access.AccessCtrlMgr;
 import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
 import com.krishagni.catissueplus.core.common.events.EntityQueryCriteria;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
+import com.krishagni.catissueplus.core.common.events.Resource;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
 import com.krishagni.catissueplus.core.common.service.ConfigurationService;
 
@@ -66,6 +74,7 @@ public class SpecimenServiceImpl implements SpecimenService {
 				return ResponseEvent.userError(SpecimenErrorCode.NOT_FOUND);
 			}
 			
+			ensureUserHasReadPermissionOnSpecimens(specimen.getVisit().getRegistration());
 			return ResponseEvent.response(SpecimenDetail.from(specimen));			
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
@@ -78,6 +87,7 @@ public class SpecimenServiceImpl implements SpecimenService {
 		try {
 			SpecimenDetail detail = req.getPayload();
 			Specimen specimen = saveOrUpdate(detail, null, null);
+			ensureUserHasCreatePermissionOnSpecimens(specimen.getVisit().getRegistration());
 			return ResponseEvent.response(SpecimenDetail.from(specimen));
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -103,6 +113,8 @@ public class SpecimenServiceImpl implements SpecimenService {
 				return ResponseEvent.userError(SpecimenErrorCode.NOT_FOUND);
 			}
 			
+			ensureUserHasUpdatePermissionOnSpecimens(existing.getVisit().getRegistration());
+			
 			saveOrUpdate(detail, existing, null);
 			return ResponseEvent.response(SpecimenDetail.from(existing));
 		} catch (OpenSpecimenException ose) {
@@ -119,6 +131,8 @@ public class SpecimenServiceImpl implements SpecimenService {
 			List<SpecimenDetail> result = new ArrayList<SpecimenDetail>();
 			for (SpecimenDetail detail : req.getPayload()) {
 				Specimen specimen = collectSpecimen(detail, null);
+				ensureUserHasCreatePermissionOnSpecimens(specimen.getVisit().getRegistration());
+				
 				result.add(SpecimenDetail.from(specimen));
 			}
 			
@@ -158,6 +172,32 @@ public class SpecimenServiceImpl implements SpecimenService {
 		return ResponseEvent.response(SpecimenLabelPrintJobSummary.from(job));
 	}
 	
+	private void ensureUserHasReadPermissionOnSpecimens(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasCreatePermissionOnSpecimens(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasUpdatePermissionOnSpecimens(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
+		Participant participant = cpr.getParticipant();
+		Set<Site> sites = new HashSet<Site>();
+		
+		if (participant != null) {
+			Set<ParticipantMedicalIdentifier> pmis = participant.getPmis();
+			
+			for (ParticipantMedicalIdentifier pmi : pmis) {
+				sites.add(pmi.getSite());
+			}
+		}
+		
+		return sites;
+	}
 	
 	private void ensureUniqueLabel(String label, OpenSpecimenException ose) {
 		if (StringUtils.isBlank(label)) {
@@ -271,6 +311,10 @@ public class SpecimenServiceImpl implements SpecimenService {
 				return ((Specimen)obj).isCollected();
 			}
 		});
+		
+		for (Specimen specimen : specimens) {
+			ensureUserHasReadPermissionOnSpecimens(specimen.getVisit().getRegistration());
+		}
 		
 		return specimens;		
 	}

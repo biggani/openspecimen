@@ -2,15 +2,19 @@
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
+import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
 import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
+import com.krishagni.catissueplus.core.biospecimen.domain.ParticipantMedicalIdentifier;
 import com.krishagni.catissueplus.core.biospecimen.domain.Specimen;
 import com.krishagni.catissueplus.core.biospecimen.domain.SpecimenRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.Visit;
@@ -32,9 +36,11 @@ import com.krishagni.catissueplus.core.biospecimen.repository.VisitsListCriteria
 import com.krishagni.catissueplus.core.biospecimen.services.CollectionProtocolRegistrationService;
 import com.krishagni.catissueplus.core.biospecimen.services.ParticipantService;
 import com.krishagni.catissueplus.core.common.PlusTransactional;
+import com.krishagni.catissueplus.core.common.access.AccessCtrlMgr;
 import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
+import com.krishagni.catissueplus.core.common.events.Resource;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
 
 public class CollectionProtocolRegistrationServiceImpl implements CollectionProtocolRegistrationService {
@@ -89,6 +95,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		try {
 			CollectionProtocolRegistrationDetail cprDetail = req.getPayload();
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(cprDetail);
+			ensureUserHasCreatePermissionOnCpr(cpr);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			
@@ -126,6 +133,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			}
 			
 			CollectionProtocolRegistration cpr = cprFactory.createCpr(detail);
+			ensureUserHasUpdatePermissionOnCpr(cpr);
 			
 			OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 			ensureUniquePpid(existing, cpr, ose);
@@ -149,7 +157,10 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	@PlusTransactional
 	public ResponseEvent<List<VisitSummary>> getVisits(RequestEvent<VisitsListCriteria> req) {
 		try {
+			ensureUserHasReadPermissionOnVisit(req.getPayload().cprId());
 			return ResponseEvent.response(daoFactory.getVisitsDao().getVisits(req.getPayload()));
+		} catch (OpenSpecimenException ose) {
+			return ResponseEvent.error(ose);
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
@@ -183,6 +194,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			Visit visit = visitFactory.createVisit(req.getPayload()); 
 			visit.setName(UUID.randomUUID().toString()); 
 
+			ensureUserHasCreatePermissionOnVisit(visit.getRegistration());
 			daoFactory.getVisitsDao().saveOrUpdate(visit); 
 			return ResponseEvent.response(VisitDetail.from(visit));			
 		} catch (OpenSpecimenException ose) {
@@ -217,6 +229,47 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		} catch (Exception e) {
 			return ResponseEvent.serverError(e);
 		}
+	}
+	
+	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
+		CollectionProtocolRegistration cpr = daoFactory.getCprDao().getById(cprId);
+		
+		if (cpr == null) {
+			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
+		}
+		
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+	
+	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
+		Participant participant = cpr.getParticipant();
+		Set<Site> sites = new HashSet<Site>();
+		
+		if (participant != null) {
+			Set<ParticipantMedicalIdentifier> pmis = participant.getPmis();
+			
+			for (ParticipantMedicalIdentifier pmi : pmis) {
+				sites.add(pmi.getSite());
+			}
+		}
+		
+		return sites;
 	}
 	
 	private void saveParticipant(CollectionProtocolRegistration existing, CollectionProtocolRegistration cpr) {		
@@ -312,6 +365,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
+		ensureUserHasReadPermissionOnCpr(cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
@@ -321,6 +375,7 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.INVALID_CP_AND_PPID);
 		}
 		
+		ensureUserHasReadPermissionOnCpr(cpr);
 		return CollectionProtocolRegistrationDetail.from(cpr);
 	}
 	
@@ -329,6 +384,8 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		if (visit == null) {
 			throw OpenSpecimenException.userError(VisitErrorCode.NOT_FOUND);
 		}
+		
+		ensureUserHasReadPermissionOnSpecimens(visit.getRegistration());
 		
 		Set<SpecimenRequirement> anticipatedSpecimens = visit.getCpEvent().getTopLevelAnticipatedSpecimens();
 		Set<Specimen> specimens = visit.getTopLevelSpecimens();
@@ -342,7 +399,16 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CpeErrorCode.NOT_FOUND);
 		}
 		
+		ensureUserHasReadPermissionOnAnticipatedSpecimens(cpe.getCollectionProtocol());
 		Set<SpecimenRequirement> anticipatedSpecimens = cpe.getTopLevelAnticipatedSpecimens();
 		return SpecimenDetail.getSpecimens(anticipatedSpecimens, Collections.<Specimen>emptySet());		
+	}
+	
+	private void ensureUserHasReadPermissionOnSpecimens(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), getSites(cpr));
+	}
+
+	private void ensureUserHasReadPermissionOnAnticipatedSpecimens(CollectionProtocol cp) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cp, cp.getRepositories());
 	}	
 }
