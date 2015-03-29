@@ -15,5 +15,7 @@ public interface StorageContainerDao extends Dao<StorageContainer> {
 	public StorageContainer getByBarcode(String barcode);
 
 	public void delete(StorageContainerPosition position);
+	
+	public List<Long> getContainerIdsBySiteIds(List<Long> siteIds);
 }
 	

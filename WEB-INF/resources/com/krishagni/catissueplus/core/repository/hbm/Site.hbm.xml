@@ -51,8 +51,21 @@
       where 
         site.code = :siteCode and site.activityStatus != 'Disabled'
     </query>
-    
-  </class>
 
+    <sql-query name="getSiteIdsByCpIds">
+      <return-scalar column="siteId" type="long"/> 
+      
+      select
+        distinct(siteCp.site_id) as siteId
+      from
+        catissue_site_cp siteCp 
+        inner join catissue_collection_protocol cp on siteCp.collection_protocol_id = cp.identifier
+        inner join catissue_site site on site.identifier = siteCp.site_id
+      where
+        cp.activity_status = 'Active' 
+        and site.activity_status = 'Active'
+        and siteCp.collection_protocol_id in (:cpIds)
+    </sql-query>    
+  </class>
 </hibernate-mapping>
  	

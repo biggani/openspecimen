@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 
@@ -84,6 +85,78 @@ public class AccessCtrlMgr {
 		if (!canPerformOp) {
 			throwAccessDenied();
 		}
+	}
+	
+	public void ensureCreatePermission(Resource resource, Set<Site> sites) {
+		ensureUserHasPermission(resource, sites, Operation.CREATE);
+	}
+	
+	public void ensureReadPermission(Resource resource, Set<Site> sites) {
+		ensureUserHasPermission(resource, sites, Operation.READ);
+	}
+	
+	public void ensureUpdatePermission(Resource resource, Set<Site> sites) {
+		ensureUserHasPermission(resource, sites, Operation.UPDATE);
+	}
+	
+	public void ensureDeletePermission(Resource resource, Set<Site> sites) {
+		ensureUserHasPermission(resource, sites, Operation.DELETE);
+	}
+	
+	private void ensureUserHasPermission(Resource resource, Set<Site> sites, Operation operation) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
+			return;
+		}
+		
+		AccessDetail accessDetail = getAccessibleSites(resource, operation);
+		
+		if (!accessDetail.canAccessAll() && CollectionUtils.intersection(getSiteIds(sites), accessDetail.getIds()).isEmpty()) {
+			throwAccessDenied();
+		}
+	}
+	
+	public AccessDetail getAccessibleSites(Resource resource, Operation operation) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
+			return AccessDetail.ACCESS_TO_ALL;
+		}
+		
+		List<CpSiteInfo> cpSites = rbacService.getAccessibleCpSites(
+				user.getId(), 
+				resource.getName(), 
+				operation.getName());
+		
+		Set<Long> siteIds = new HashSet<Long>();
+		Set<Long> cpIds = new HashSet<Long>();
+		
+		for (CpSiteInfo cpSite : cpSites) {
+			Long siteId = cpSite.getSiteId();
+			Long cpId = cpSite.getCpId();
+			
+			if (siteId == null && cpId == null) {
+				/*
+				 * Full permissions
+				 */
+				return AccessDetail.ACCESS_TO_ALL;
+			} else if (siteId != null) {
+				siteIds.add(siteId);
+			} else if (siteId == null && cpId != null) {
+				cpIds.add(cpId);
+			} 
+		}
+		
+		if (!cpIds.isEmpty()) {
+			siteIds.addAll(daoFactory.getSiteDao().getSiteIdsByCpIds(new ArrayList<Long>(cpIds)));
+		}
+		
+		if (siteIds.isEmpty()) {
+			throwAccessDenied();
+		}
+		
+		AccessDetail accessDetail = new AccessDetail(false);
+		accessDetail.setIds(siteIds);
+		return accessDetail;
 	}
 	
 	public AccessDetail getReadableCpIds() {

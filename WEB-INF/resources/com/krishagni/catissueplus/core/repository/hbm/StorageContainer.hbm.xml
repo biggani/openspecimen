@@ -106,5 +106,17 @@
     <one-to-one
       name="stats"
       class="com.krishagni.catissueplus.core.administrative.domain.StorageContainerStats"/>
+      
+    <sql-query name="getContainerIdsBySiteIds">
+      <return-scalar column="containerId" type="long"/> 
+      
+      select 
+        identifier as containerId
+      from 
+        os_storage_containers 
+      where 
+        activity_status = 'Active' 
+        and site_id in (:siteIds)
+    </sql-query>    
   </class>
 </hibernate-mapping>

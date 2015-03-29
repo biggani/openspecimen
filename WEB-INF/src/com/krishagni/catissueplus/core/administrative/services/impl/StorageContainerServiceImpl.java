@@ -1,5 +1,8 @@
 package com.krishagni.catissueplus.core.administrative.services.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -19,10 +22,15 @@ import com.krishagni.catissueplus.core.administrative.services.StorageContainerS
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.repository.DaoFactory;
 import com.krishagni.catissueplus.core.common.PlusTransactional;
+import com.krishagni.catissueplus.core.common.access.AccessCtrlMgr;
 import com.krishagni.catissueplus.core.common.errors.ErrorType;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
+import com.krishagni.catissueplus.core.common.events.AccessDetail;
+import com.krishagni.catissueplus.core.common.events.Operation;
 import com.krishagni.catissueplus.core.common.events.RequestEvent;
+import com.krishagni.catissueplus.core.common.events.Resource;
 import com.krishagni.catissueplus.core.common.events.ResponseEvent;
+import com.krishagni.rbac.common.errors.RbacErrorCode;
 
 public class StorageContainerServiceImpl implements StorageContainerService {
 	private DaoFactory daoFactory;
@@ -48,9 +56,12 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 	@Override
 	@PlusTransactional
 	public ResponseEvent<List<StorageContainerSummary>> getStorageContainers(RequestEvent<StorageContainerListCriteria> req) {
-		try {			
-			List<StorageContainer> containers = daoFactory.getStorageContainerDao().getStorageContainers(req.getPayload());
-			List<StorageContainerSummary> result = StorageContainerSummary.from(containers, req.getPayload().includeChildren());
+		try {	
+			StorageContainerListCriteria crit = req.getPayload();
+			crit.ids(getReadableStorageContainerIds());
+			
+			List<StorageContainer> containers = daoFactory.getStorageContainerDao().getStorageContainers(crit);
+			List<StorageContainerSummary> result = StorageContainerSummary.from(containers, crit.includeChildren());
 			return ResponseEvent.response(result);
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -76,6 +87,7 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 				return ResponseEvent.userError(StorageContainerErrorCode.NOT_FOUND);
 			}
 			
+			ensureUserHasReadPermission(container);
 			return ResponseEvent.response(StorageContainerDetail.from(container));
 		} catch (OpenSpecimenException ose) {
 			return ResponseEvent.error(ose);
@@ -95,6 +107,7 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 				return ResponseEvent.userError(StorageContainerErrorCode.NOT_FOUND);
 			}
 			
+			ensureUserHasReadPermission(container);
 			Set<StorageContainerPosition> positions = container.getOccupiedPositions();
 			return ResponseEvent.response(StorageContainerPositionDetail.from(positions));
 		} catch (OpenSpecimenException ose) {
@@ -111,6 +124,7 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 			StorageContainerDetail input = req.getPayload();
 			
 			StorageContainer container = containerFactory.createStorageContainer(input);
+			ensureUserHasCreatePermission(container);
 			ensureUniqueConstraints(container);
 			container.validateRestrictions();
 			
@@ -134,8 +148,9 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 			if (existing == null) {
 				return ResponseEvent.userError(StorageContainerErrorCode.NOT_FOUND);
 			}
-						
+
 			StorageContainer container = containerFactory.createStorageContainer(input);
+			ensureUserHasUpdatePermission(container);
 			ensureUniqueConstraints(container);
 			
 			existing.update(container);			
@@ -178,7 +193,7 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 			return ResponseEvent.serverError(e);
 		}
 	}
-			
+	
 	private void ensureUniqueConstraints(StorageContainer container) {
 		OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 		
@@ -222,5 +237,37 @@ public class StorageContainerServiceImpl implements StorageContainerService {
 		} else {
 			return false;
 		}
+	}
+	
+	/***************************************************************
+	 * Permission Checker                                          *
+	 ***************************************************************/
+	
+	private Set<Long> getReadableStorageContainerIds() {
+		AccessDetail detail = AccessCtrlMgr.getInstance().getAccessibleSites(Resource.STORAGE_CONTAINER, Operation.READ);
+		
+		if (!detail.canAccessAll()) {
+			List<Long> containerIds = daoFactory.getStorageContainerDao().getContainerIdsBySiteIds(new ArrayList<Long>(detail.getIds()));
+			
+			if (containerIds.isEmpty()) {
+				throw OpenSpecimenException.userError(RbacErrorCode.ACCESS_DENIED);
+			}
+			
+			return new HashSet<Long>(containerIds); 
+		} else {
+			return Collections.<Long>emptySet();
+		}
+	}
+	
+	private void ensureUserHasCreatePermission(StorageContainer container) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.STORAGE_CONTAINER, Collections.singleton(container.getSite()));
+	}
+	
+	private void ensureUserHasReadPermission(StorageContainer container) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.STORAGE_CONTAINER, Collections.singleton(container.getSite()));
+	}
+	
+	private void ensureUserHasUpdatePermission(StorageContainer container) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.STORAGE_CONTAINER, Collections.singleton(container.getSite()));
 	}
 }

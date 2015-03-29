@@ -67,7 +67,15 @@ public class SiteDaoImpl extends AbstractDao<Site> implements SiteDao {
 		
 		return result.isEmpty() ? null : result.get(0);
 	}
-	
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<Long> getSiteIdsByCpIds(List<Long> cpIds) {
+		return sessionFactory.getCurrentSession()
+				.getNamedQuery(GET_SITE_IDS_BY_CP_IDS)
+				.setParameterList("cpIds", cpIds)
+				.list();
+	}
 
 	private static final String FQN = Site.class.getName();
 
@@ -75,4 +83,5 @@ public class SiteDaoImpl extends AbstractDao<Site> implements SiteDao {
 	
 	private static final String GET_SITE_BY_CODE = FQN + ".getSiteByCode";
 
+	private static final String GET_SITE_IDS_BY_CP_IDS = FQN + ".getSiteIdsByCpIds";
 }

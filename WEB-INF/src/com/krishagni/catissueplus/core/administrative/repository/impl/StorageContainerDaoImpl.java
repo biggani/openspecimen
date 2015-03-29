@@ -1,9 +1,12 @@
 
 package com.krishagni.catissueplus.core.administrative.repository.impl;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.Query;
@@ -59,6 +62,18 @@ public class StorageContainerDaoImpl extends AbstractDao<StorageContainer> imple
 		sessionFactory.getCurrentSession().delete(position);		
 	}
 	
+	@Override
+	@SuppressWarnings("unchecked")
+	public List<Long> getContainerIdsBySiteIds(List<Long> siteIds) {
+		return sessionFactory.getCurrentSession()
+				.getNamedQuery(GET_CONTAINER_IDS_BY_SITE_IDS)
+				.setParameterList("siteIds", siteIds)
+				.list();
+	}
+	
+	private static final String FQN = StorageContainer.class.getName();
+	
+	private static final String GET_CONTAINER_IDS_BY_SITE_IDS = FQN + ".getContainerIdsBySiteIds";
 	
 	private class ListQueryBuilder {
 		private StorageContainerListCriteria crit;
@@ -95,6 +110,8 @@ public class StorageContainerDaoImpl extends AbstractDao<StorageContainer> imple
 			addStoreSpecimenRestriction();
 			
 			addParentRestriction();
+			
+			addIdsRestriction();
 			
 			String hql = new StringBuilder(from).append(" ").append(where)
 					.append(" order by c.name asc")
@@ -174,6 +191,19 @@ public class StorageContainerDaoImpl extends AbstractDao<StorageContainer> imple
 				params.put("parentId", parentId);						
 			}
 		}
+		
+		public void addIdsRestriction() {
+			if (crit.ids().isEmpty()) {
+				return;
+			}
+			
+			addAnd();
+			/*
+			 * This is to avoid oracle 1000 limit for IN clause
+			 */
+			String inClause = new InClauseBuilder("c.id", 1000, crit.ids()).buildInClause(); 
+			where.append(inClause);
+		}
 
 		private void addSpecimenRestriction() {			
 			String specimenClass = crit.specimenClass(), specimenType = crit.specimenType();			
@@ -229,5 +259,64 @@ public class StorageContainerDaoImpl extends AbstractDao<StorageContainer> imple
 			
 			params.put("storeSpecimenEnabled", crit.storeSpecimensEnabled());
 		}
-	}	
+	}
+	
+	private class InClauseBuilder {
+
+		private String propertyName;
+		
+		private Set<Long> values = new HashSet<Long>();
+		
+		private int limit;
+		
+		public InClauseBuilder(String propertyName, int limit, Set<Long> values) {
+			this.propertyName = propertyName;
+			this.limit = limit;
+			this.values = values;
+		}
+		
+		public String buildInClause() {
+			if (values.isEmpty()) {
+				return "";
+			}
+			
+			StringBuilder sb = new StringBuilder();
+			List<Long> ids = new ArrayList<Long>(values);
+
+			sb.append("(");
+			while (!ids.isEmpty()) {
+				int size = ids.size() > limit ? limit : ids.size();
+				List<Long> subList = ids.subList(0, size);
+				
+				sb.append(propertyName)
+						.append(" in ")
+						.append(buildIdString(subList))
+						.append(" or ");
+				
+				ids.subList(0, size).clear();
+			}
+			
+			if (sb.length() > 4) {
+				sb.setLength(sb.length() - 4);
+			}
+			
+			sb.append(")");
+			
+			return sb.toString();
+		}
+		
+		private String buildIdString(List<Long> ids) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("(");
+			
+			for (Long id : ids) {
+				sb.append(id)
+						.append(",");
+			}
+			sb.setLength(sb.length() -1);
+			sb.append(")");
+			
+			return sb.toString();
+		}
+	}
 }
