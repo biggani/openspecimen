@@ -38,6 +38,8 @@ public class SiteDaoImpl extends AbstractDao<Site> implements SiteDao {
 			query.add(Restrictions.ilike("name", listCrit.query(), mathMode));
 		}
 		
+		applyIdsFilter(query, "id", listCrit.ids());
+		
 		return query.list();
 	}
 
