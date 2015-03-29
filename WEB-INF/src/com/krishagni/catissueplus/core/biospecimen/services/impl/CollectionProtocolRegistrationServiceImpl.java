@@ -2,19 +2,16 @@
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
 import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
-import com.krishagni.catissueplus.core.biospecimen.domain.ParticipantMedicalIdentifier;
 import com.krishagni.catissueplus.core.biospecimen.domain.Specimen;
 import com.krishagni.catissueplus.core.biospecimen.domain.SpecimenRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.Visit;
@@ -231,47 +228,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		}
 	}
 	
-	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
-	}
-	
-	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
-	}
-	
-	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), getSites(cpr));
-	}
-	
-	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
-		CollectionProtocolRegistration cpr = daoFactory.getCprDao().getById(cprId);
-		
-		if (cpr == null) {
-			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
-		}
-		
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
-	}
-	
-	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), getSites(cpr));
-	}
-	
-	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
-		Participant participant = cpr.getParticipant();
-		Set<Site> sites = new HashSet<Site>();
-		
-		if (participant != null) {
-			Set<ParticipantMedicalIdentifier> pmis = participant.getPmis();
-			
-			for (ParticipantMedicalIdentifier pmi : pmis) {
-				sites.add(pmi.getSite());
-			}
-		}
-		
-		return sites;
-	}
-	
 	private void saveParticipant(CollectionProtocolRegistration existing, CollectionProtocolRegistration cpr) {		
 		Participant existingParticipant = null;
 		Participant participant = cpr.getParticipant();
@@ -386,7 +342,6 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		}
 		
 		ensureUserHasReadPermissionOnSpecimens(visit.getRegistration());
-		
 		Set<SpecimenRequirement> anticipatedSpecimens = visit.getCpEvent().getTopLevelAnticipatedSpecimens();
 		Set<Specimen> specimens = visit.getTopLevelSpecimens();
 
@@ -404,8 +359,38 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 		return SpecimenDetail.getSpecimens(anticipatedSpecimens, Collections.<Specimen>emptySet());		
 	}
 	
+	/***************************************************************
+	 * Permission Checker                                          *
+	 ***************************************************************/
+	
+	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
+		CollectionProtocolRegistration cpr = daoFactory.getCprDao().getById(cprId);
+		
+		if (cpr == null) {
+			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
+		}
+		
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+	}
+	
 	private void ensureUserHasReadPermissionOnSpecimens(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), getSites(cpr));
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
 	}
 
 	private void ensureUserHasReadPermissionOnAnticipatedSpecimens(CollectionProtocol cp) {

@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.biospecimen.domain.factory.ParticipantErrorCode;
 import com.krishagni.catissueplus.core.common.CollectionUpdater;
 import com.krishagni.catissueplus.core.common.errors.OpenSpecimenException;
@@ -222,6 +223,16 @@ public class Participant extends BaseEntity {
 		} else {
 			existing.setMedicalRecordNumber(pmi.getMedicalRecordNumber());
 		}
+	}
+	
+	public Set<Site> getAllMrnSites() {
+		Set<Site> sites = new HashSet<Site>();
+		
+		for (ParticipantMedicalIdentifier pmi : getPmis()) { 
+			sites.add(pmi.getSite());
+		}
+		
+		return sites;
 	}
 	
 	private void updatePmis(Participant participant) {

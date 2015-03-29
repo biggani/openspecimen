@@ -9,7 +9,6 @@ import org.apache.commons.lang.StringUtils;
 
 import com.krishagni.catissueplus.core.administrative.domain.Site;
 import com.krishagni.catissueplus.core.administrative.domain.User;
-import com.krishagni.catissueplus.core.administrative.domain.factory.UserErrorCode;
 import com.krishagni.catissueplus.core.biospecimen.domain.AliquotSpecimensRequirement;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocol;
 import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolEvent;
@@ -146,7 +145,7 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 		try {	
 			CprListCriteria listCrit = req.getPayload();
 
-			boolean userHasPhiRead = userHasPhiAccess(listCrit.cpId());
+			boolean userHasPhiRead = doesUserHavePhiAccess(listCrit.cpId());
 			listCrit.includePhi(listCrit.includePhi() && userHasPhiRead);
 			
 			return ResponseEvent.response(daoFactory.getCprDao().getCprList(listCrit));
@@ -519,86 +518,6 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 			return ResponseEvent.serverError(e);
 		}
 	}
-
-	private void ensureUserHasCreatePermission(CollectionProtocol cp) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.CP, cp, cp.getRepositories());
-	}
-	
-	private void ensureUsersBelongtoCpSites(CollectionProtocol cp) {
-		ensureCreatorBelongsCpSites(cp);
-		ensurePiBelongsCpSites(cp);
-		ensureCoordinatorsBelongsCpSites(cp);		
-	}
-	
-	private void ensureCreatorBelongsCpSites(CollectionProtocol cp) {
-		User user = AuthUtil.getCurrentUser();
-		if (user.isAdmin()) {
-			return;
-		}
-		user = loadUser(user);
-		
-		Set<Site> userSites = user.getSites();
-		Set<Site> cpSites = cp.getRepositories();
-		
-		if (!userSites.containsAll(cpSites)) {
-			throw OpenSpecimenException.userError(CpErrorCode.CREATOR_DOES_NOT_BELONG_CP_REPOS);
-		}
-	}
-	
-	private User loadUser(User user) {
-		return daoFactory.getUserDao().getById(user.getId());
-	}
-
-	private void ensurePiBelongsCpSites(CollectionProtocol cp) {
-		Set<Site> piSites = cp.getPrincipalInvestigator().getSites();
-		Set<Site> cpSites = cp.getRepositories();
-		
-		if (!hasAtleastOneSiteInCommon(cpSites, piSites)) {
-			throw OpenSpecimenException.userError(CpErrorCode.PI_DOES_NOT_BELONG_CP_REPOS);
-		}
-	}
-	
-	private void ensureCoordinatorsBelongsCpSites(CollectionProtocol cp) {
-		Set<Site> cpSites = cp.getRepositories();
-		Set<User> coordinators = cp.getCoordinators();
-		
-		for (User coordinator : coordinators) {
-			Set<Site> coordinatorSites = coordinator.getSites();
-			if (!hasAtleastOneSiteInCommon(cpSites, coordinatorSites)) {
-				throw OpenSpecimenException.userError(CpErrorCode.CO_ORD_DOES_NOT_BELONG_CP_REPOS);
-			}
-		}
-	}
-	
-	private boolean hasAtleastOneSiteInCommon(Set<Site> arg1, Set<Site> arg2) {
-		return !CollectionUtils.intersection(arg1, arg2).isEmpty();
-	}
-	
-	private void ensureUserHasReadPermission(CollectionProtocol cp) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.CP, cp, cp.getRepositories());		
-	}
-	
-	private void ensureUserHasUpdatePermission(CollectionProtocol cp) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.CP, cp, cp.getRepositories());		
-	}
-	
-	private boolean userHasPhiAccess(Long cpId) {
-		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getById(cpId);
-		
-		if (cp == null) {
-			throw OpenSpecimenException.userError(CpErrorCode.NOT_FOUND);
-		}
-		
-		ensureUserHasReadPermission(cp);
-		boolean hasPhiAccess = true;
-		try {
-			AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cp, cp.getRepositories());
-		} catch (OpenSpecimenException oce) {
-			hasPhiAccess = false;
-		}
-		
-		return hasPhiAccess;
-	}
 	
 	private void ensureUniqueTitle(CollectionProtocol existingCp, CollectionProtocol cp, OpenSpecimenException ose) {
 		if (!existingCp.getTitle().equals(cp.getTitle())) {
@@ -681,5 +600,89 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 				importSpecimenReqs(eventId, resp.getPayload().getId(), sdb, sr.getChildren());
 			}			
 		}
+	}
+	
+	/***************************************************************
+	 * Permission Checker                                          *
+	 ***************************************************************/
+	
+	private void ensureUserHasCreatePermission(CollectionProtocol cp) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.CP, cp, cp.getRepositories());
+	}
+	
+	private void ensureUsersBelongtoCpSites(CollectionProtocol cp) {
+		ensureCreatorBelongsCpSites(cp);
+		ensurePiBelongsCpSites(cp);
+		ensureCoordinatorsBelongsCpSites(cp);		
+	}
+	
+	private void ensureCreatorBelongsCpSites(CollectionProtocol cp) {
+		User user = AuthUtil.getCurrentUser();
+		if (user.isAdmin()) {
+			return;
+		}
+		user = loadUser(user);
+		
+		Set<Site> userSites = user.getSites();
+		Set<Site> cpSites = cp.getRepositories();
+		
+		if (!userSites.containsAll(cpSites)) {
+			throw OpenSpecimenException.userError(CpErrorCode.CREATOR_DOES_NOT_BELONG_CP_REPOS);
+		}
+	}
+	
+	private User loadUser(User user) {
+		return daoFactory.getUserDao().getById(user.getId());
+	}
+
+	private void ensurePiBelongsCpSites(CollectionProtocol cp) {
+		Set<Site> piSites = cp.getPrincipalInvestigator().getSites();
+		Set<Site> cpSites = cp.getRepositories();
+		
+		if (!hasAtleastOneSiteInCommon(cpSites, piSites)) {
+			throw OpenSpecimenException.userError(CpErrorCode.PI_DOES_NOT_BELONG_CP_REPOS);
+		}
+	}
+	
+	private void ensureCoordinatorsBelongsCpSites(CollectionProtocol cp) {
+		Set<Site> cpSites = cp.getRepositories();
+		Set<User> coordinators = cp.getCoordinators();
+		
+		for (User coordinator : coordinators) {
+			Set<Site> coordinatorSites = coordinator.getSites();
+			if (!hasAtleastOneSiteInCommon(cpSites, coordinatorSites)) {
+				throw OpenSpecimenException.userError(CpErrorCode.CO_ORD_DOES_NOT_BELONG_CP_REPOS);
+			}
+		}
+	}
+	
+	private boolean hasAtleastOneSiteInCommon(Set<Site> arg1, Set<Site> arg2) {
+		return !CollectionUtils.intersection(arg1, arg2).isEmpty();
+	}
+	
+	private void ensureUserHasReadPermission(CollectionProtocol cp) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.CP, cp, cp.getRepositories());		
+	}
+	
+	private void ensureUserHasUpdatePermission(CollectionProtocol cp) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.CP, cp, cp.getRepositories());		
+	}
+	
+	private boolean doesUserHavePhiAccess(Long cpId) {
+		CollectionProtocol cp = daoFactory.getCollectionProtocolDao().getById(cpId);
+		
+		if (cp == null) {
+			throw OpenSpecimenException.userError(CpErrorCode.NOT_FOUND);
+		}
+		
+		ensureUserHasReadPermission(cp);
+		boolean hasPhiAccess = true;
+		try {
+			AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cp, cp.getRepositories());
+		} catch (OpenSpecimenException oce) {
+			hasPhiAccess = false;
+		}
+		
+		return hasPhiAccess;
 	}
 }

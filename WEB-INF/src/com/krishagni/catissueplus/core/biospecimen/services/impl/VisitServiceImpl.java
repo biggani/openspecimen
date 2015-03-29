@@ -1,16 +1,10 @@
 
 package com.krishagni.catissueplus.core.biospecimen.services.impl;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.krishagni.catissueplus.core.administrative.domain.Site;
-import com.krishagni.catissueplus.core.biospecimen.domain.CollectionProtocolRegistration;
-import com.krishagni.catissueplus.core.biospecimen.domain.Participant;
-import com.krishagni.catissueplus.core.biospecimen.domain.ParticipantMedicalIdentifier;
 import com.krishagni.catissueplus.core.biospecimen.domain.Visit;
 import com.krishagni.catissueplus.core.biospecimen.domain.factory.VisitErrorCode;
 import com.krishagni.catissueplus.core.biospecimen.domain.factory.VisitFactory;
@@ -152,33 +146,6 @@ public class VisitServiceImpl implements VisitService {
 		return visit;
 	}
 	
-	private void ensureHasReadPermissionsOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, visit.getCollectionProtocol(), getSites(visit.getRegistration()));
-	}
-	
-	private void ensureHasCreatePermissionOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, visit.getCollectionProtocol(), getSites(visit.getRegistration()));
-	}
-	
-	private void ensureHasUpdatePermissionOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.VISIT, visit.getCollectionProtocol(), getSites(visit.getRegistration()));
-	}
-	
-	private Set<Site> getSites(CollectionProtocolRegistration cpr) {
-		Participant participant = cpr.getParticipant();
-		Set<Site> sites = new HashSet<Site>();
-		
-		if (participant != null) {
-			Set<ParticipantMedicalIdentifier> pmis = participant.getPmis();
-			
-			for (ParticipantMedicalIdentifier pmi : pmis) {
-				sites.add(pmi.getSite());
-			}
-		}
-		
-		return sites;
-	}
-	
 	private void ensureUniqueVisitName(String visitName, OpenSpecimenException ose) {
 		if (daoFactory.getVisitsDao().getByName(visitName) != null) {
 			ose.addError(VisitErrorCode.DUP_NAME);
@@ -190,5 +157,21 @@ public class VisitServiceImpl implements VisitService {
 			specimen.setVisitId(visitId);
 			setVisitId(visitId, specimen.getChildren());
 		}
+	}
+	
+	/***************************************************************
+	 * Permission Checker                                          *
+	 ***************************************************************/
+	
+	private void ensureHasReadPermissionsOnVisit(Visit visit) {
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureHasCreatePermissionOnVisit(Visit visit) {
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
+	}
+	
+	private void ensureHasUpdatePermissionOnVisit(Visit visit) {
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
 	}
 }

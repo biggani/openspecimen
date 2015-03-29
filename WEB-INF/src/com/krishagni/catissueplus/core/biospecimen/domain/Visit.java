@@ -283,6 +283,10 @@ public class Visit {
 		setName(labelGenerator.generateLabel(defNameTmpl, this));
 	}
 	
+	public Participant getParticipant() {
+		return registration.getParticipant();
+	}
+	
 	private void checkActiveDependents() {
 		for (Specimen specimen : this.specimens) {
 			if (specimen.isActive()) {
