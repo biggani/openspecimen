@@ -145,8 +145,8 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 		try {	
 			CprListCriteria listCrit = req.getPayload();
 
-			boolean userHasPhiRead = doesUserHavePhiAccess(listCrit.cpId());
-			listCrit.includePhi(listCrit.includePhi() && userHasPhiRead);
+			boolean userHasPhiAccess = doesUserHavePhiAccess(listCrit.cpId());
+			listCrit.includePhi(listCrit.includePhi() && userHasPhiAccess);
 			
 			return ResponseEvent.response(daoFactory.getCprDao().getCprList(listCrit));
 		} catch (OpenSpecimenException oce) {
@@ -656,8 +656,8 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 		}
 	}
 	
-	private boolean hasAtleastOneSiteInCommon(Set<Site> arg1, Set<Site> arg2) {
-		return !CollectionUtils.intersection(arg1, arg2).isEmpty();
+	private boolean hasAtleastOneSiteInCommon(Set<Site> sites1, Set<Site> sites2) {
+		return !CollectionUtils.intersection(sites1, sites2).isEmpty();
 	}
 	
 	private void ensureUserHasReadPermission(CollectionProtocol cp) {
@@ -675,7 +675,6 @@ public class CollectionProtocolServiceImpl implements CollectionProtocolService 
 			throw OpenSpecimenException.userError(CpErrorCode.NOT_FOUND);
 		}
 		
-		ensureUserHasReadPermission(cp);
 		boolean hasPhiAccess = true;
 		try {
 			AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cp, cp.getRepositories());

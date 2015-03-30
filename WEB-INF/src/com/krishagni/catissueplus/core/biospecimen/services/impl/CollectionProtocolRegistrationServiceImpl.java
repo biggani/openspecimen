@@ -364,15 +364,15 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 	 ***************************************************************/
 	
 	private void ensureUserHasCreatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasUpdatePermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasReadPermissionOnCpr(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.PARTICIPANT_PHI, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasReadPermissionOnVisit(Long cprId) {
@@ -382,15 +382,15 @@ public class CollectionProtocolRegistrationServiceImpl implements CollectionProt
 			throw OpenSpecimenException.userError(CprErrorCode.NOT_FOUND);
 		}
 		
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasCreatePermissionOnVisit(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasReadPermissionOnSpecimens(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 
 	private void ensureUserHasReadPermissionOnAnticipatedSpecimens(CollectionProtocol cp) {

@@ -225,7 +225,7 @@ public class Participant extends BaseEntity {
 		}
 	}
 	
-	public Set<Site> getAllMrnSites() {
+	public Set<Site> getMrnSites() {
 		Set<Site> sites = new HashSet<Site>();
 		
 		for (ParticipantMedicalIdentifier pmi : getPmis()) { 

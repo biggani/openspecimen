@@ -164,14 +164,14 @@ public class VisitServiceImpl implements VisitService {
 	 ***************************************************************/
 	
 	private void ensureHasReadPermissionsOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getMrnSites());
 	}
 	
 	private void ensureHasCreatePermissionOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getMrnSites());
 	}
 	
 	private void ensureHasUpdatePermissionOnVisit(Visit visit) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.VISIT, visit.getCollectionProtocol(), visit.getParticipant().getMrnSites());
 	}
 }

@@ -199,7 +199,8 @@ public class SpecimenServiceImpl implements SpecimenService {
 	
 	private Specimen saveOrUpdate(SpecimenDetail detail, Specimen existing, Specimen parent) {
 		Specimen specimen = specimenFactory.createSpecimen(detail, parent);
-
+		ensureUserHasSaveOrUpdatePermissionOnSpecimen(specimen, existing);
+		
 		OpenSpecimenException ose = new OpenSpecimenException(ErrorType.USER_ERROR);
 		if (existing == null || // no specimen before 
 			StringUtils.isBlank(existing.getLabel()) || // no label was specified before 
@@ -218,15 +219,12 @@ public class SpecimenServiceImpl implements SpecimenService {
 
 		boolean newSpecimen = true;
 		if (existing != null) {
-			ensureUserHasUpdatePermissionOnSpecimens(existing.getCpr());
 			existing.update(specimen);
 			specimen = existing;
 			newSpecimen = false;
 		} else if (specimen.getParentSpecimen() != null) {
-			ensureUserHasCreatePermissionOnSpecimens(specimen.getCpr());
 			specimen.getParentSpecimen().addSpecimen(specimen);
 		} else {
-			ensureUserHasCreatePermissionOnSpecimens(specimen.getCpr());
 			specimen.checkQtyConstraints(); // TODO: Should we be calling this at all?
 			specimen.occupyPosition();
 		}
@@ -278,10 +276,9 @@ public class SpecimenServiceImpl implements SpecimenService {
 			}
 		});
 		
-		//TODO: Wait for other permissions settings for print specimen.
-//		for (Specimen specimen : specimens) {
-//			ensureUserHasReadPermissionOnSpecimens(specimen.getVisit().getRegistration());
-//		}
+		for (Specimen specimen : specimens) {
+			ensureUserHasReadPermissionOnSpecimens(specimen.getCpr());
+		}
 		
 		return specimens;		
 	}
@@ -291,14 +288,22 @@ public class SpecimenServiceImpl implements SpecimenService {
 	 ***************************************************************/
 	
 	private void ensureUserHasReadPermissionOnSpecimens(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureReadPermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
+	}
+	
+	public void ensureUserHasSaveOrUpdatePermissionOnSpecimen(Specimen specimen, Specimen existing) {
+		if (existing == null) {
+			ensureUserHasCreatePermissionOnSpecimens(specimen.getCpr());
+		} else {
+			ensureUserHasUpdatePermissionOnSpecimens(existing.getCpr());
+		}
 	}
 	
 	private void ensureUserHasCreatePermissionOnSpecimens(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureCreatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 	
 	private void ensureUserHasUpdatePermissionOnSpecimens(CollectionProtocolRegistration cpr) {
-		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getAllMrnSites());
+		AccessCtrlMgr.getInstance().ensureUpdatePermission(Resource.SPECIMEN, cpr.getCollectionProtocol(), cpr.getParticipant().getMrnSites());
 	}
 }
