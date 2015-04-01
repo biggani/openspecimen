@@ -7,9 +7,15 @@ angular.module('os.administrative.user.addedit', ['os.administrative.models'])
       $scope.signedUp = false;
       loadPvs();
     }
+
+    var onDomainsLoad = function() {
+      if (!$scope.user.id && $scope.domains.length == 1) {
+        $scope.user.domainName = $scope.domains[0];
+      }
+    }
     
     function loadPvs() {
-      $scope.domains = PvManager.getPvs('domains');
+      $scope.domains = PvManager.getDomains(onDomainsLoad);
 
       Institute.query().then(
         function(instituteList) {
@@ -38,6 +44,13 @@ angular.module('os.administrative.user.addedit', ['os.administrative.models'])
         }
       );
     };
+
+    $scope.setLoginName = function(loginName) {
+      var user = $scope.user;
+      if (!user.id && user.domainName == $scope.global.defaultDomain) {
+        user.loginName = loginName;
+      }
+    }
     
     $scope.createUser = function() {
       var user = angular.copy($scope.user);

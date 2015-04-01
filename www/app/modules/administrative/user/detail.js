@@ -5,7 +5,7 @@ angular.module('os.administrative.user.detail', ['os.administrative.models'])
     User, PvManager, Alerts, DeleteUtil) {
 
     $scope.user = user;
-    $scope.domains = PvManager.getPvs('domains');
+    $scope.domains = PvManager.getDomains();
     $scope.sites = PvManager.getSites();
 
     $scope.editUser = function(property, value) {

@@ -406,7 +406,10 @@
           </list>
         </entry>
         <entry key="GET">
-          <value>/institutes/</value>
+          <list>
+            <value>/institutes/</value>
+            <value>/auth-domains/</value>
+          </list>
         </entry>
       </map>
     </property>

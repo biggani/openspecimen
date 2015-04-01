@@ -201,6 +201,7 @@ angular.module('openspecimen', [
     };
 
     $rootScope.global = {
+      defaultDomain: 'openspecimen',
       dateFmt: 'MMM dd, yyyy',
       queryDateFmt: {format: 'mm-dd-yyyy'},
       timeFmt: 'hh:mm',
