@@ -4,7 +4,7 @@ package com.krishagni.catissueplus.core.administrative.events;
 public class PasswordDetails {
 	private Long userId;
 	
-	private String loginName;
+	private String loginId;
 
 	private String oldPassword;
 
@@ -20,12 +20,12 @@ public class PasswordDetails {
 		this.userId = userId;
 	}
 
-	public String getLoginName() {
-		return loginName;
+	public String getLoginId() {
+		return loginId;
 	}
 
-	public void setLoginName(String loginName) {
-		this.loginName = loginName;
+	public void setLoginId(String loginId) {
+		this.loginId = loginId;
 	}
 
 	public String getOldPassword() {

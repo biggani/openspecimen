@@ -44,7 +44,10 @@ public class UserAuthenticationServiceImpl implements UserAuthenticationService 
 		LoginDetail loginDetail = req.getPayload();
 		User user = null;
 		try {
-			user = daoFactory.getUserDao().getUser(loginDetail.getLoginName(), loginDetail.getDomainName());
+			user = daoFactory.getUserDao().getUser(loginDetail.getLoginId(), loginDetail.getDomainName());
+			if (user == null) {
+				user = daoFactory.getUserDao().getUserByEmailAddress(loginDetail.getLoginId());
+			}
 			
 			if (user == null) {
 				throw OpenSpecimenException.userError(AuthErrorCode.INVALID_CREDENTIALS);
@@ -59,7 +62,7 @@ public class UserAuthenticationServiceImpl implements UserAuthenticationService 
 			}
 			
 			AuthenticationService authService = user.getAuthDomain().getAuthProviderInstance();
-			authService.authenticate(loginDetail.getLoginName(), loginDetail.getPassword());
+			authService.authenticate(user.getLoginName(), loginDetail.getPassword());
 			
 			LoginAuditLog loginAuditLog = insertLoginAudit(user, loginDetail.getIpAddress(), true);
 			Map<String, Object> authDetail = new HashMap<String, Object>();

@@ -269,7 +269,8 @@ public class UserServiceImpl implements UserService {
 			}
 			
 			User user = token.getUser();
-			if (!user.getLoginName().equals(detail.getLoginName())) {
+			if (!user.getLoginName().equals(detail.getLoginId()) && 
+				!user.getEmailAddress().equals(detail.getLoginId())) {
 				return ResponseEvent.userError(UserErrorCode.NOT_FOUND);
 			}
 			
@@ -294,9 +295,14 @@ public class UserServiceImpl implements UserService {
 	public ResponseEvent<Boolean> forgotPassword(RequestEvent<String> req) {
 		try {
 			UserDao dao = daoFactory.getUserDao();
-			String loginName = req.getPayload();
-			User user = dao.getUser(loginName, DEFAULT_AUTH_DOMAIN);
-			if (user == null || !user.getActivityStatus().equals(Status.ACTIVITY_STATUS_ACTIVE.getStatus())) {
+			String loginId = req.getPayload();
+			
+			User user = dao.getUserByEmailAddress(loginId);
+			if (user == null) {
+				user = dao.getUser(loginId, DEFAULT_AUTH_DOMAIN);
+			}
+			
+			if (user == null || !isAllowedToResetPassword(user)) {
 				return ResponseEvent.userError(UserErrorCode.NOT_FOUND);
 			}
 			
@@ -393,5 +399,10 @@ public class UserServiceImpl implements UserService {
 	private boolean isLocked(String currentStatus, String newStatus) {
 		return currentStatus.equals(Status.ACTIVITY_STATUS_ACTIVE.getStatus()) &&
 				newStatus.equals(Status.ACTIVITY_STATUS_LOCKED.getStatus());
+	}
+	
+	private boolean isAllowedToResetPassword(User user) {
+		return user.getAuthDomain().getName().equals(DEFAULT_AUTH_DOMAIN) &&
+			user.getActivityStatus().equals(Status.ACTIVITY_STATUS_ACTIVE.getStatus());
 	}
 }

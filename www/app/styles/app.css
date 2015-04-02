@@ -173,6 +173,10 @@ body {
   border-radius: 50%;
 }
 
+.tip {
+  font-size: 11px;
+}
+
 .os-group-controls {
   margin-bottom: 15px;
 }

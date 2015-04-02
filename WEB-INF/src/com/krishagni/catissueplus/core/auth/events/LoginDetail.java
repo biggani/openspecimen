@@ -2,7 +2,7 @@
 package com.krishagni.catissueplus.core.auth.events;
 
 public class LoginDetail {
-	private String loginName;
+	private String loginId;
 
 	private String password;
 
@@ -12,12 +12,12 @@ public class LoginDetail {
 	
 	private boolean doNotGenerateToken;
 
-	public String getLoginName() {
-		return loginName;
+	public String getLoginId() {
+		return loginId;
 	}
 
-	public void setLoginName(String loginName) {
-		this.loginName = loginName;
+	public void setLoginId(String loginId) {
+		this.loginId = loginId;
 	}
 
 	public String getPassword() {

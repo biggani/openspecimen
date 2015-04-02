@@ -144,7 +144,7 @@ public class AuthTokenFilter extends GenericFilterBean {
 		}
 
 		LoginDetail detail = new LoginDetail();
-		detail.setLoginName(parts[0]);
+		detail.setLoginId(parts[0]);
 		detail.setPassword(parts[1]);
 		detail.setIpAddress(httpReq.getRemoteAddr());
 		detail.setDomainName(DEFAULT_AUTH_DOMAIN);
